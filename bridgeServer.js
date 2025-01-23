@@ -3,11 +3,12 @@
 import httpServer from "./httpServer";
 
 class Request {
-  constructor(rawRequest) {
+  constructor(rawRequest, params = {}) {
     this.requestId = rawRequest.requestId;
     this.postData = rawRequest.postData;
     this.type = rawRequest.type;
     this.url = rawRequest.url;
+    this.params = params; // Add dynamic URL parameters (e.g., { z: 10, x: 20, y: 30 })
   }
   get data() {
     return JSON.parse(this.postData);
@@ -58,6 +59,29 @@ class BridgeServer {
     BridgeServer.server = this;
   }
 
+  // Add the matchRoute function here
+  matchRoute(url, route) {
+    const routeParts = route.split('/').filter(Boolean); // Split the route into parts
+    const urlParts = url.split('/').filter(Boolean); // Split the requested URL into parts
+
+    // If the number of parts doesn't match, return false
+    if (routeParts.length !== urlParts.length) {
+      return false;
+    }
+
+    let params = {}; // Store dynamic parameters
+    for (let i = 0; i < routeParts.length; i++) {
+      if (routeParts[i].startsWith(':')) {
+        // If the part starts with ":", it's a dynamic parameter (e.g., :z)
+        params[routeParts[i].substring(1)] = urlParts[i]; // Capture the parameter value
+      } else if (routeParts[i] !== urlParts[i]) {
+        return false; // If the part doesn't match, return false
+      }
+    }
+    return params; // Return the captured parameters
+  }
+
+  // Update the existing route handlers
   get(url, callback) {
     this.callbacks.push({method: 'GET', url, callback});
   }
@@ -83,12 +107,22 @@ class BridgeServer {
     }
 
     httpServer.start(port, this.serviceName, async rawRequest => {
-      const request = new Request(rawRequest);
+      // Create the Request object, passing empty params initially
+      const request = new Request(rawRequest, {});
 
+       // Filter the callbacks using matchRoute to handle dynamic routes
       const callbacks = this.callbacks.filter(
-        c =>
-          (c.method === request.type || c.method === '*') &&
-          (c.url === request.url || c.url === '*'),
+        c => {
+          if (c.method === request.type || c.method === '*') {
+            const params = this.matchRoute(request.url, c.url);
+            if (params !== false) {
+              request.params = params; // Store dynamic parameters in request
+              return true;
+            }
+          }
+          return false; 
+        }
+          
       );
 
       for (const c of callbacks) {
