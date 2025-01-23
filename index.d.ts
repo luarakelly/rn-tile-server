@@ -16,7 +16,7 @@ declare module "react-native-http-bridge-refurbished" {
         requestId: string,
         code: number,
         type: string,
-        body: string
+        body:  string | Array<number>
     ): void;
 
     export type RawRequest = {
@@ -43,7 +43,7 @@ declare module "react-native-http-bridge-refurbished" {
 
         constructor(requestId: string);
 
-        public send(code: number, type: string, body: string);
+        public send(code: number, type: string, body: string | Array<number>);
 
         public json(obj: object, code?: number);
 
