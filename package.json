@@ -1,13 +1,13 @@
 {
-    "name": "react-native-http-bridge-refurbished",
+    "name": "react-native-tile-server",
     "version": "0.0.0-development",
-    "description": "A simple HTTP debug server for React Native apps",
+    "description": "A simple HTTP tile server for React Native apps",
     "main": "index.js",
     "types": "index.d.ts",
     "repository": {
         "type": "git",
-        "url": "https://github.com/Alwinator/react-native-http-bridge-refurbished.git",
-        "directory": "packages/react-native-http-bridge-refurbished"
+        "url": "https://github.com/luarakelly/react-native-tile-server",
+        "directory": "packages/react-native-tile-server"
     },
     "keywords": [
         "react-component",
@@ -19,12 +19,12 @@
         "bridge",
         "webserver"
     ],
-    "author": "Alwin Schuster",
+    "author": "Luara Kelly",
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/Alwinator/react-native-http-bridge-refurbished/issues"
+        "url": "https://github.com/luarakelly/react-native-tile-server"
     },
-    "homepage": "https://github.com/Alwinator/react-native-http-bridge-refurbished#readme",
+    "homepage": "https://github.com/luarakelly/react-native-tile-server",
     "scripts": {
         "semantic-release": "semantic-release"
     },
