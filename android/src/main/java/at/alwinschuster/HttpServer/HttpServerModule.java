@@ -47,23 +47,22 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
     }
 
     @ReactMethod
-    public void respond(String requestId, int code, String type, String body) {
+    public void respondWithString(String requestId, int code, String type, String body) {
         if (server != null) {
-            // Handle string data
+            // Handle string data (e.g., text, JSON response)
             server.respond(requestId, code, type, body);
         }
     }
 
     @ReactMethod
-    public void respond(String requestId, int code, String type, ReadableArray body) {
+    public void respondWithArray(String requestId, int code, String type, ReadableArray body) {
         if (server != null) {
             // Handle binary data as an array (e.g., Array of numbers)
-                ReadableArray readableArray = (ReadableArray) body;
-                byte[] byteArray = new byte[readableArray.size()];
-                for (int i = 0; i < readableArray.size(); i++) {
-                    byteArray[i] = (byte) readableArray.getInt(i);
-                }
-                server.respond(requestId, code, type, byteArray);
+            byte[] byteArray = new byte[body.size()];
+            for (int i = 0; i < body.size(); i++) {
+                byteArray[i] = (byte) body.getInt(i);
+            }
+            server.respond(requestId, code, type, byteArray);
         }
     }
 
