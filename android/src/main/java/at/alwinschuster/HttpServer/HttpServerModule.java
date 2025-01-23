@@ -5,6 +5,8 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.Callback;
+import com.facebook.react.bridge.ReadableArray;
 
 import java.io.IOException;
 
@@ -41,14 +43,26 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
     @ReactMethod
     public void stop() {
         Log.d(MODULE_NAME, "Stopping server...");
-
         stopServer();
     }
 
     @ReactMethod
-    public void respond(String requestId, int code, String type, String body) {
+    public void respond(String requestId, int code, String type, Object body) {
         if (server != null) {
-            server.respond(requestId, code, type, body);
+            if (body instanceof String) {
+                // Handle string data
+                server.respond(requestId, code, type, (String) body);
+            } else if (body instanceof ReadableArray) {
+                // Handle binary data as an array (e.g., Array of numbers)
+                ReadableArray readableArray = (ReadableArray) body;
+                byte[] byteArray = new byte[readableArray.size()];
+                for (int i = 0; i < readableArray.size(); i++) {
+                    byteArray[i] = (byte) readableArray.getInt(i);
+                }
+                server.respond(requestId, code, type, byteArray);
+            } else {
+                Log.e(MODULE_NAME, "Unsupported body type: " + body.getClass().getName());
+            }
         }
     }
 
