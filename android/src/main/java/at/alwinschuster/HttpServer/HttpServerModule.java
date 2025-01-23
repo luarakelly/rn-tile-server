@@ -47,22 +47,23 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
     }
 
     @ReactMethod
-    public void respond(String requestId, int code, String type, Object body) {
+    public void respond(String requestId, int code, String type, String body) {
         if (server != null) {
-            if (body instanceof String) {
-                // Handle string data
-                server.respond(requestId, code, type, (String) body);
-            } else if (body instanceof ReadableArray) {
-                // Handle binary data as an array (e.g., Array of numbers)
+            // Handle string data
+            server.respond(requestId, code, type, body);
+        }
+    }
+
+    @ReactMethod
+    public void respond(String requestId, int code, String type, ReadableArray body) {
+        if (server != null) {
+            // Handle binary data as an array (e.g., Array of numbers)
                 ReadableArray readableArray = (ReadableArray) body;
                 byte[] byteArray = new byte[readableArray.size()];
                 for (int i = 0; i < readableArray.size(); i++) {
                     byteArray[i] = (byte) readableArray.getInt(i);
                 }
                 server.respond(requestId, code, type, byteArray);
-            } else {
-                Log.e(MODULE_NAME, "Unsupported body type: " + body.getClass().getName());
-            }
         }
     }
 
