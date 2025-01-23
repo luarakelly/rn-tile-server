@@ -8,8 +8,11 @@ import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
 import java.util.Map;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Random;
+
+import java.io.ByteArrayInputStream;
 
 import androidx.annotation.Nullable;
 import android.util.Log;
@@ -41,8 +44,7 @@ public class Server extends NanoHTTPD {
             request = fillRequestMap(session, requestId);
         } catch (Exception e) {
             return newFixedLengthResponse(
-                    Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, e.getMessage()
-            );
+                    Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, e.getMessage());
         }
 
         this.sendEvent(reactContext, SERVER_EVENT_ID, request);
@@ -59,8 +61,24 @@ public class Server extends NanoHTTPD {
         return response;
     }
 
-    public void respond(String requestId, int code, String type, String body) {
-        responses.put(requestId, newFixedLengthResponse(Status.lookup(code), type, body));
+    public void respond(String requestId, int code, String type, Object body) {
+        if (body == null) {
+            Log.e(TAG, "Null response body for requestId: " + requestId);
+        }
+
+        if (body instanceof byte[]) {
+            byte[] byteArray = (byte[]) body;
+            // Handle binary data (e.g., protobuf, image, etc.)
+            responses.put(requestId,
+                    newFixedLengthResponse(Status.lookup(code), type, new ByteArrayInputStream(byteArray)));
+        } else if (body instanceof String) {
+            // Handle string data (e.g., text, json response)
+            responses.put(requestId, newFixedLengthResponse(Status.lookup(code), type, (String) body));
+        } else {
+            // Handle unsupported body types
+            responses.put(requestId,
+                    newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Unsupported response type"));
+        }
     }
 
     private WritableMap fillRequestMap(IHTTPSession session, String requestId) throws Exception {
@@ -73,7 +91,7 @@ public class Server extends NanoHTTPD {
         Map<String, String> files = new HashMap<>();
         session.parseBody(files);
         if (files.size() > 0) {
-          request.putString("postData", files.get("postData"));
+            request.putString("postData", files.get("postData"));
         }
 
         return request;
