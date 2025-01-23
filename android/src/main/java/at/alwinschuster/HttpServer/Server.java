@@ -11,6 +11,7 @@ import java.util.Map;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Random;
+import java.io.ByteArrayInputStream;
 
 import androidx.annotation.Nullable;
 import android.util.Log;
@@ -68,7 +69,7 @@ public class Server extends NanoHTTPD {
             byte[] byteArray = (byte[]) body;
             // Handle binary data (e.g., protobuf, image, etc.)
             responses.put(requestId,
-                    newFixedLengthResponse(Status.lookup(code), type, (byte[]) byteArray, byteArray.length));
+                    newFixedLengthResponse(Status.lookup(code), type, new ByteArrayInputStream(byteArray), byteArray.length));
         } else if (body instanceof String) {
             // Handle string data (e.g., text, json response)
             responses.put(requestId, newFixedLengthResponse(Status.lookup(code), type, (String) body));
