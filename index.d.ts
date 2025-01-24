@@ -12,11 +12,18 @@ declare module "react-native-http-bridge-refurbished" {
 
     function stop(): void;
 
-    function respond(
+    function respondWithArray(
         requestId: string,
         code: number,
         type: string,
-        body:  string | Array<number>
+        body: Array<number> // This represents the byte array (e.g., a Uint8Array)
+    ): void;
+
+    function respondWithString(
+        requestId: string,
+        code: number,
+        type: string,
+        body: string // This represents a string (e.g., JSON, text response)
     ): void;
 
     export type RawRequest = {
