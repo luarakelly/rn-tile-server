@@ -60,24 +60,27 @@ public class Server extends NanoHTTPD {
         return response;
     }
 
-    public void respond(String requestId, int code, String type, Object body) {
+    public void respondWithArray(String requestId, int code, String type, byte[] byteArray) {
+        if (byteArray == null) {
+            Log.e(TAG, "Null response body for requestId: " + requestId);
+            responses.put(requestId, newFixedLengthResponse(
+                    Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Null response body"));
+            return;
+        }
+        // Using ByteArrayInputStream to stream binary data
+        responses.put(requestId,
+                newFixedLengthResponse(Status.lookup(code), type, new ByteArrayInputStream(byteArray), byteArray.length));
+    }
+    
+    public void respondWithString(String requestId, int code, String type, String body) {
         if (body == null) {
             Log.e(TAG, "Null response body for requestId: " + requestId);
+            responses.put(requestId, newFixedLengthResponse(
+                    Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Null response body"));
+            return;
         }
 
-        if (body instanceof byte[]) {
-            byte[] byteArray = (byte[]) body;
-            // Handle binary data (e.g., protobuf, image, etc.)
-            responses.put(requestId,
-                    newFixedLengthResponse(Status.lookup(code), type, new ByteArrayInputStream(byteArray), byteArray.length));
-        } else if (body instanceof String) {
-            // Handle string data (e.g., text, json response)
-            responses.put(requestId, newFixedLengthResponse(Status.lookup(code), type, (String) body));
-        } else {
-            // Handle unsupported body types
-            responses.put(requestId,
-                    newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Unsupported response type"));
-        }
+        responses.put(requestId, newFixedLengthResponse(Status.lookup(code), type, body));
     }
 
     private WritableMap fillRequestMap(IHTTPSession session, String requestId) throws Exception {
