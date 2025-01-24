@@ -50,7 +50,7 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
     public void respondWithString(String requestId, int code, String type, String body) {
         if (server != null) {
             // Handle string data (e.g., text, JSON response)
-            server.respond(requestId, code, type, body);
+            server.respondWithString(requestId, code, type, body);
         }
     }
 
@@ -62,7 +62,7 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
             for (int i = 0; i < body.size(); i++) {
                 byteArray[i] = (byte) body.getInt(i);
             }
-            server.respond(requestId, code, type, byteArray);
+            server.respondWithArray(requestId, code, type, byteArray);
         }
     }
 
