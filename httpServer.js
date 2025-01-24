@@ -19,5 +19,7 @@ module.exports = {
         ServerEventEmitter.removeAllListeners('httpServerResponseReceived');
     },
 
-    respond: (requestId, code, type, body) => Server.respond(requestId, code, type, body)
+    respondWithArray: (requestId, code, type, body) => Server.respondWithArray(requestId, code, type, body),
+
+    respondWithString: (requestId, code, type, body) => Server.respondWithString(requestId, code, type, body)
 }
