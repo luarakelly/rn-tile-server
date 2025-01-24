@@ -24,8 +24,13 @@ class Response {
     if (this.closed) {
       throw new Error('Response already sent');
     }
-
-    httpServer.respond(this.requestId, code, type, body);
+    if(type === 'application/x-protobuf'){
+      // To send ReadableArray
+      HttpServer.respondWithArray(this.requestId, code, type, body);
+    } else {
+      // To send a string
+      HttpServer.respondWithString(this.requestId, code, type, body);
+    }
     this.closed = true;
   }
   json(obj, code = 200) {
@@ -33,6 +38,9 @@ class Response {
   }
   html(html, code = 200) {
     return this.send(code, 'text/html', html);
+  }
+  protobuf(protobuf, code = 200) {
+    return this.send(code, 'application/x-protobuf', protobuf);
   }
 }
 
