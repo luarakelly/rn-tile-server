@@ -26,10 +26,10 @@ class Response {
     }
     if(type === 'application/x-protobuf'){
       // To send ReadableArray
-      HttpServer.respondWithArray(this.requestId, code, type, body);
+      httpServer.respondWithArray(this.requestId, code, type, body);
     } else {
       // To send a string
-      HttpServer.respondWithString(this.requestId, code, type, body);
+      httpServer.respondWithString(this.requestId, code, type, body);
     }
     this.closed = true;
   }
@@ -69,6 +69,11 @@ class BridgeServer {
 
   // Add the matchRoute function here
   matchRoute(url, route) {
+    // Check if the URL ends with .pbf and remove it
+    if (url.endsWith('.pbf')) {
+        url = url.substring(0, url.lastIndexOf('.pbf'));
+    }
+    
     const routeParts = route.split('/').filter(Boolean); // Split the route into parts
     const urlParts = url.split('/').filter(Boolean); // Split the requested URL into parts
 
