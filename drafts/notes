@@ -1,0 +1,153 @@
+java server usin nanohttpd that i can control the start and stop from react-native js layer and the server has to be optimizer to serve layers as faster and optmal as possible.
+
+once the server starts it checks if the there is a mbtiles file, if not it will download it from the url and provide the path to the mbtiles file.
+
+I want to have 4 routs endpoint the root '/', tiles '/tile/:z/:x/:y', style '/style.json' and glyphs '/glyphs/:fontstack/:range.pbf'.
+
+I need a funtion to match the routes the function can be matchRoute, match it and take the params to provide in the resquest object.
+I wnat to have in the request object the url, params, requestID, type and body.
+
+- the root respond with a message saying that the server is running.
+- The tiles will use the function fromXYZtoTMS to flyp the y the use the function getTile to get the tiles from the mbtiles file using sqlite to open the file and get the tile decompress it, then the tile end point return it in the respond.
+- the style will respond with a json file with the style.
+- the glyphs will respond with the pbf file.
+
+I want to have the por PORT = process.env.PORT || 8080 and listen local host
+
+/\*\*
+new Thread(() -> {
+try {
+Server server = new Server(reactContext, 8080);
+server.start();
+} catch (Exception e) {
+Log.e("HttpServer", "Error starting server: " + e.getMessage());
+}
+}).start();
+
+new Thread(() -> {
+try {
+server.stop();
+} catch (Exception e) {
+Log.e("HttpServer", "Error stopping server: " + e.getMessage());
+}
+}).start();
+
+\*/
+
+/\*\*
+
+- Add Android Native Code: You need to add the Java code inside the android folder. When using EAS Build, Expo will automatically handle custom native code, so you can add your Server.java class in android/app/src/main/java/com/[yourapp]/ (create the appropriate package structure).
+- Create a Bridge to JavaScript: You'll need to create a React Native bridge to call Java code from JavaScript. This is done by creating a ReactPackage and a bridge module.
+- ***
+-
+- it may be better to start the server dynamically when required (for example, during tracking), and shut it down when the app is in the background or inactive.
+- and stop it when not needed. This way, you can avoid unnecessary resource consumption and potential conflicts with other services running on the device. Here's how you can start and stop the server using separate threads:
+-
+- You should start the server when the user is engaging with the app and stop it when the app goes into the background or becomes inactive. Use lifecycle methods like componentDidMount and componentWillUnmount or React Native's AppState API (AppState.addEventListener).
+- The user opens the app or navigates to the part of the app that requires the server (e.g., when starting an exercise tracking session).
+-
+- import { AppState } from 'react-native';
+
+useEffect(() => {
+const appStateListener = AppState.addEventListener('change', (nextAppState) => {
+if (nextAppState === 'background') {
+// Stop server
+} else if (nextAppState === 'active') {
+// Start server
+}
+});
+
+return () => {
+appStateListener.remove();
+};
+}, []);
+
+-
+- Your optimized version already includes all necessary imports for it to function correctly. You have:
+
+✅ NanoHTTPD for HTTP server functionality.
+✅ SQLite (java.sql.Connection, PreparedStatement, ResultSet) for database access.
+✅ Inflater (java.util.zip.Inflater) for decompressing PBF tile data.
+✅ File Handling (java.io, java.nio.file, java.net.URL) for file management and tile preloading.
+✅ Logging (android.util.Log) for debugging.
+
+- Key Improvements:
+
+✅ Tile Serving with SQLite:
+
+    Extracts tiles from an MBTiles SQLite database instead of React Native handling the response.
+    Converts TMS (Tile Map Service) to XYZ format for correct tile addressing.
+
+✅ Decompression of PBF (Protocolbuffer) Tiles:
+
+    Tiles are stored in compressed form inside the MBTiles database.
+    Uses Inflater to decompress the tile before sending it to the client.
+
+✅ LRU (Least Recently Used) Tile Caching:
+
+    Implements an in-memory tile cache using LinkedHashMap with a fixed size (MAX_CACHE_SIZE = 100).
+    Prevents repeated DB reads for the same tiles, improving performance.
+
+✅ Automatic Cleanup of Old Cached Tiles:
+
+    Tiles are stored in a local directory (TILE_CACHE_DIR).
+    A background thread runs every 24 hours (CLEANUP_INTERVAL), deleting old tiles.
+
+✅ Background Tile Downloading & Preloading:
+
+    If the MBTiles file does not exist, the server downloads it from a URL.
+    Reduces startup time by preloading important tiles.
+
+    _______________________________________________________________________--
+
+    Start the Server
+
+    Call the constructor with a ReactContext and port number:
+
+Server server = new Server(reactContext, 8080);
+server.start();
+
+import BackgroundGeolocation from '@mauron85/react-native-background-geolocation';+ AsyncStorage
+
+---
+
+import org.sqlite.SQLiteDataSource;
+import java.sql.SQLException;
+
+public byte[] getTile(int z, int x, int y) {
+// Open the MBTiles file and fetch the tile data (this is a simplified example)
+String dbPath = "path/to/mbtiles.db"; // Replace with the correct file path
+SQLiteDataSource dataSource = new SQLiteDataSource();
+dataSource.setUrl("jdbc:sqlite:" + dbPath);
+
+    try (Connection conn = dataSource.getConnection()) {
+        String sql = "SELECT tile_data FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, z);
+            stmt.setInt(2, x);
+            stmt.setInt(3, y);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    byte[] tileData = rs.getBytes("tile_data");
+                    return tileData;
+                }
+            }
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return null;
+
+}
+
+---
+
+Recommended Improvements
+
+Tile Cache Expiry: Implement a TTL for cached tiles to ensure stale data is evicted after a certain period, not just when the cache is full.
+Database Connection Pooling: For better performance, especially if you have many concurrent requests, implement connection pooling for the SQLite database.
+Use ScheduledExecutorService: Replace the manual thread sleep loop with a more efficient and manageable ScheduledExecutorService for periodic tasks like cleanup.
+Handle Port Conflicts: Add a mechanism to handle cases where the specified port is already in use, or provide fallback ports.
+Improve Error Handling: Provide more specific error messages and HTTP status codes where applicable, especially in areas where resources like tiles are not found or errors occur during decompression.
+Security Considerations: Consider using environment variables or configuration files for sensitive URLs (like the Dropbox URL) rather than hardcoding them into the codebase.
