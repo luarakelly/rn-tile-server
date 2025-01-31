@@ -32,11 +32,11 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
     }
 
     @ReactMethod
-    public void start(int port, String serviceName, Callback callback) {
+    public void start(int port, String bindAddress, String serviceName, Callback callback) {
         Log.d(MODULE_NAME, "Initializing server...");
         this.port = port;
 
-        startServer(callback);
+        startServer(bindAddress, callback);
     }
 
     @ReactMethod
@@ -76,14 +76,14 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
         });
     }
 
-    private void startServer(Callback callback) {
+    private void startServer(String bindAddress, Callback callback) {
         if (this.port == 0) {
             callback.invoke("Invalid port number", null);
             return;
         }
 
         if (server == null) {
-            server = new Server(reactContext, port); // Initialize server with the port
+            server = new Server(reactContext, port, bindAddress); // Initialize server with the port
         }
 
         try {

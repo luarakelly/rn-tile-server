@@ -24,13 +24,13 @@ class BridgeServer {
     BridgeServer.server = this;
   }
 
-  listen(port) {
+  listen(port, bindAddress) {
     if (port < 0 || port > 65535) {
       throw new Error("Invalid port number");
     }
 
     // Start the server using the native module
-    httpServer.start(port, this.serviceName);
+    httpServer.start(port, bindAddress, this.serviceName);
   }
 
   stop() {
@@ -40,5 +40,5 @@ class BridgeServer {
 }
 
 module.exports = {
-  BridgeServer
+  BridgeServer,
 };

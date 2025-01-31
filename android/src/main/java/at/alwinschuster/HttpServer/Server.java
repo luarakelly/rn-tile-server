@@ -46,6 +46,7 @@ public class Server extends NanoHTTPD {
 
     public Server(ReactContext context, int port) {
         super(port);
+        this.bindAddress = bindAddress != null ? bindAddress : "127.0.0.1"; // Default to 127.0.0.1 if not provided
         reactContext = context;
         tileCache = new LRUCache<String, byte[]>(MAX_CACHE_SIZE);
         tilesFile = new File(TILE_FILE_NAME);
@@ -57,6 +58,13 @@ public class Server extends NanoHTTPD {
         }
 
         scheduleCleanup();
+    }
+
+    @Override
+    public void start() throws IOException {
+        // Start server binding to all available network interfaces (0.0.0.0) Binding to 0.0.0.0:
+        super.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false, bindAddress);  // This binds the server to all available network interfaces.
+        Log.d(TAG, "Server started on " bindAddress + ":" + getListeningPort())
     }
 
     private void downloadTiles() {
