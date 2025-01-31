@@ -12,6 +12,7 @@ import com.facebook.react.bridge.JavaScriptModule;
 import at.alwinschuster.HttpServer.HttpServerModule;
 
 public class HttpServerReactPackage implements ReactPackage {
+  //In newer versions of React Native (since 0.47+), the createJSModules method has been deprecated. This method is no longer needed, so you can safely remove it. React Native automatically registers JavaScript modules for you.
   @Override
   public List<NativeModule> createNativeModules(ReactApplicationContext reactContext) {
     List<NativeModule> modules = new ArrayList<>();

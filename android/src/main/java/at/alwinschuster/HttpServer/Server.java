@@ -3,103 +3,227 @@ package at.alwinschuster.HttpServer;
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.NanoHTTPD.Response.Status;
 import com.facebook.react.bridge.ReactContext;
-import com.facebook.react.bridge.Arguments;
-import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
-import java.util.Map;
-import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.Random;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.CompletableFuture;
+import java.util.zip.GZIPInputStream;
 
-import androidx.annotation.Nullable;
 import android.util.Log;
 
 public class Server extends NanoHTTPD {
     private static final String TAG = "HttpServer";
-    private static final String SERVER_EVENT_ID = "httpServerResponseReceived";
+    private static final String TILE_FILE_NAME = "tiles.mbtiles";
+    private static final String STYLES_FILE_NAME = "styles.json";
+    private static final String TILE_CACHE_DIR = "tile_cache";
+    private static final int MAX_CACHE_SIZE = 100;
+    private static final long CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
 
     private ReactContext reactContext;
-    private Map<String, Response> responses;
+    private Map<String, byte[]> tileCache;
+    private File tilesFile;
+
+    private Thread cleanupThread; // Thread for cleanup
+
+    // Executor for handling asynchronous tasks
+    private final ExecutorService executor = Executors.newFixedThreadPool(4); // newFixedThreadPool(4) Limit the thread pool size
 
     public Server(ReactContext context, int port) {
         super(port);
         reactContext = context;
-        responses = new HashMap<>();
+        tileCache = new LRUCache<>(MAX_CACHE_SIZE);
+        tilesFile = new File(TILE_FILE_NAME);
 
         Log.d(TAG, "Server started");
+
+        if (!tilesFile.exists()) {
+            downloadTiles();
+        }
+
+        scheduleCleanup();
+    }
+
+    private void downloadTiles() {
+        CompletableFuture.runAsync(() -> {
+            try {
+                URL url = new URL("https://www.dropbox.com/scl/fi/7olc36bmmpks3fz6ftyoa/finland-shortbread-1.0.mbtiles?rlkey=1bh9yfcpaol5sruk3sy36x4ut&st=pyz2t7s0&dl=1");
+                Files.copy(url.openStream(), Paths.get(TILE_FILE_NAME), StandardCopyOption.REPLACE_EXISTING);
+                Log.d(TAG, "Tiles downloaded successfully.");
+            } catch (Exception e) {
+                Log.e(TAG, "Error downloading tiles: " + e.getMessage());
+            }
+        }, executor);
+    }
+
+    private void scheduleCleanup() {
+        cleanupThread = new Thread(() -> {
+            while (!Thread.interrupted()) {
+                try {
+                    Thread.sleep(CLEANUP_INTERVAL);
+                    cleanOldTiles();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    Log.e(TAG, "Cleanup thread interrupted");
+                }
+            }
+        });
+        cleanupThread.start();
+    }
+
+    private void cleanOldTiles() {
+        File cacheDir = new File(TILE_CACHE_DIR);
+        if (!cacheDir.exists()) return;
+
+        File[] files = cacheDir.listFiles();
+        long now = System.currentTimeMillis();
+        for (File file : files) {
+            if (now - file.lastModified() > CLEANUP_INTERVAL) {
+                file.delete();
+            }
+        }
     }
 
     @Override
     public Response serve(IHTTPSession session) {
-        Log.d(TAG, "Request received!");
+        String uri = session.getUri();
 
-        Random rand = new Random();
-        String requestId = String.format("%d:%d", System.currentTimeMillis(), rand.nextInt(1000000));
-
-        WritableMap request;
-        try {
-            request = fillRequestMap(session, requestId);
-        } catch (Exception e) {
-            return newFixedLengthResponse(
-                    Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, e.getMessage());
+        if (uri.equals("/")) {
+            return newFixedLengthResponse("Server is running!");
+        } else if (uri.matches("/tile/\\d+/\\d+/\\d+")) {
+            return handleTileRequest(uri);
+        } else if (uri.equals("/style.json")) {
+            return handleStyleRequest();
+        } else {
+            return newFixedLengthResponse(Status.NOT_FOUND, MIME_PLAINTEXT, "Not Found");
         }
+    }
 
-        this.sendEvent(reactContext, SERVER_EVENT_ID, request);
-
-        while (responses.get(requestId) == null) {
-            try {
-                Thread.sleep(10);
-            } catch (Exception e) {
-                Log.d(TAG, "Exception while waiting: " + e);
+    private Response handleTileRequest(String tileRequest) {
+        return CompletableFuture.supplyAsync(() -> {
+            byte[] tileData = tileCache.get(tileRequest);
+            if (tileData == null) {
+                tileData = getTileData(tileRequest);
+                if (tileData != null) {
+                    tileCache.put(tileRequest, tileData);
+                }
             }
-        }
-        Response response = responses.get(requestId);
-        responses.remove(requestId);
-        return response;
+            if (tileData != null) {
+                return newFixedLengthResponse(Status.OK, "application/x-protobuf", new ByteArrayInputStream(tileData), tileData.length);
+            } else {
+                return newFixedLengthResponse(Status.NOT_FOUND, MIME_PLAINTEXT, "Tile not found");
+            }
+        }, executor).join();  // Non-blocking, returns the response once the task is complete
     }
 
-    public void respondWithArray(String requestId, int code, String type, byte[] byteArray) {
-        if (byteArray == null) {
-            Log.e(TAG, "Null response body for requestId: " + requestId);
-            responses.put(requestId, newFixedLengthResponse(
-                    Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Null response body"));
-            return;
+    private byte[] getTileData(String tileRequest) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + TILE_FILE_NAME)) {
+            String[] parts = tileRequest.split("/");
+            if (parts.length < 4) return null;
+
+            int z = Integer.parseInt(parts[2]);
+            int x = Integer.parseInt(parts[3]);
+            int y = Integer.parseInt(parts[4].split("\\.")[0]);
+            y = (1 << z) - 1 - y;
+
+            String query = "SELECT tile_data FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setInt(1, z);
+                stmt.setInt(2, x);
+                stmt.setInt(3, y);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        byte[] compressedData = rs.getBytes("tile_data");
+                        return decompress(compressedData);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error fetching tile data: " + e.getMessage());
         }
-        // Using ByteArrayInputStream to stream binary data
-        responses.put(requestId,
-                newFixedLengthResponse(Status.lookup(code), type, new ByteArrayInputStream(byteArray), byteArray.length));
-    }
-    
-    public void respondWithString(String requestId, int code, String type, String body) {
-        if (body == null) {
-            Log.e(TAG, "Null response body for requestId: " + requestId);
-            responses.put(requestId, newFixedLengthResponse(
-                    Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Null response body"));
-            return;
-        }
-
-        responses.put(requestId, newFixedLengthResponse(Status.lookup(code), type, body));
-    }
-
-    private WritableMap fillRequestMap(IHTTPSession session, String requestId) throws Exception {
-        Method method = session.getMethod();
-        WritableMap request = Arguments.createMap();
-        request.putString("url", session.getUri());
-        request.putString("type", method.name());
-        request.putString("requestId", requestId);
-
-        Map<String, String> files = new HashMap<>();
-        session.parseBody(files);
-        if (files.size() > 0) {
-            request.putString("postData", files.get("postData"));
-        }
-
-        return request;
+        return null;
     }
 
-    private void sendEvent(ReactContext reactContext, String eventName, @Nullable WritableMap params) {
-        reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(eventName, params);
+    private byte[] decompress(byte[] compressedData) {
+        try (ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(compressedData);
+             GZIPInputStream gzipInputStream = new GZIPInputStream(byteArrayInputStream);
+             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = gzipInputStream.read(buffer)) != -1) {
+                byteArrayOutputStream.write(buffer, 0, bytesRead);
+            }
+            return byteArrayOutputStream.toByteArray();
+        } catch (IOException e) {
+            Log.e(TAG, "Error decompressing tile data: " + e.getMessage());
+        }
+        return null;
+    }
+
+    private Response handleStyleRequest() {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                byte[] stylesJson = Files.readAllBytes(Paths.get(STYLES_FILE_NAME));
+                return newFixedLengthResponse(Status.OK, "application/json", new ByteArrayInputStream(stylesJson), stylesJson.length);
+            } catch (IOException e) {
+                Log.e(TAG, "Error reading styles.json: " + e.getMessage());
+                return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error reading styles.json");
+            }
+        }, executor).join();
+    }
+
+    public void stop() {
+        // Graceful shutdown logic
+        if (cleanupThread != null) {
+            cleanupThread.interrupt(); // Interrupt the cleanup thread
+        }
+        executor.shutdown(); // Shutdown the executor service gracefully
+        super.stop(); // Stop the NanoHTTPD server
+    }
+
+    // LRU Cache Implementation for tile cache
+    private static class LRUCache<K, V> extends LinkedHashMap<K, V> {
+        private final int maxSize;
+
+        public LRUCache(int maxSize) {
+            super(16, 0.75f, true);
+            this.maxSize = maxSize;
+        }
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+            return size() > maxSize;
+        }
     }
 }
+
+/**
+ * private void scheduleCleanup() {
+        executor.submit(() -> {
+            while (!Thread.interrupted()) {
+                try {
+                    Thread.sleep(CLEANUP_INTERVAL);
+                    cleanOldTiles();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    Log.e(TAG, "Cleanup thread interrupted");
+                }
+            }
+        });
+    }
+    }
+ */

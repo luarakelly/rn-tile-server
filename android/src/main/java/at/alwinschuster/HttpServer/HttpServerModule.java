@@ -23,47 +23,27 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
     public HttpServerModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
-
-        reactContext.addLifecycleEventListener(this);
+        reactContext.addLifecycleEventListener(this); // Add lifecycle event listener
     }
 
     @Override
-    public String getName() {
+    public String getName() { // This is how the module will be referenced in JS
         return MODULE_NAME;
     }
 
     @ReactMethod
-    public void start(int port, String serviceName) {
+    public void start(int port, String serviceName, Callback callback) {
         Log.d(MODULE_NAME, "Initializing server...");
         this.port = port;
 
-        startServer();
+        startServer(callback);
     }
 
     @ReactMethod
-    public void stop() {
+    public void stop(Callback callback) {
         Log.d(MODULE_NAME, "Stopping server...");
-        stopServer();
-    }
-
-    @ReactMethod
-    public void respondWithString(String requestId, int code, String type, String body) {
-        if (server != null) {
-            // Handle string data (e.g., text, JSON response)
-            server.respondWithString(requestId, code, type, body);
-        }
-    }
-
-    @ReactMethod
-    public void respondWithArray(String requestId, int code, String type, ReadableArray body) {
-        if (server != null) {
-            // Handle binary data as an array (e.g., Array of numbers)
-            byte[] byteArray = new byte[body.size()];
-            for (int i = 0; i < body.size(); i++) {
-                byteArray[i] = (byte) body.getInt(i);
-            }
-            server.respondWithArray(requestId, code, type, byteArray);
-        }
+        // Graceful shutdown process
+        stopServer(callback);
     }
 
     @ReactMethod
@@ -78,39 +58,75 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
 
     @Override
     public void onHostResume() {
-
+        // Handle app resume if necessary
     }
 
     @Override
     public void onHostPause() {
-
+        // Handle app pause if necessary
     }
 
     @Override
     public void onHostDestroy() {
-        stopServer();
+        stopServer(new Callback() {
+            @Override
+            public void invoke(Object... args) {
+                // Callback for cleanup (if any)
+            }
+        });
     }
 
-    private void startServer() {
+    private void startServer(Callback callback) {
         if (this.port == 0) {
+            callback.invoke("Invalid port number", null);
             return;
         }
 
         if (server == null) {
-            server = new Server(reactContext, port);
+            server = new Server(reactContext, port); // Initialize server with the port
         }
+
         try {
             server.start();
+            callback.invoke(null, "Server started successfully"); // Callback success
         } catch (IOException e) {
-            Log.e(MODULE_NAME, e.getMessage());
+            callback.invoke(e.getMessage(), null); // Callback failure with error message
         }
     }
 
-    private void stopServer() {
+    private void stopServer(Callback callback) {
         if (server != null) {
-            server.stop();
-            server = null;
-            port = 0;
+            server.stop(); // Graceful stop
+            server = null; // Nullify server instance after stopping
+            port = 0; // Reset port
+            callback.invoke(null, "Server stopped successfully");
+        } else {
+            callback.invoke("Server is not running", null);
         }
     }
 }
+
+
+/**
+ * // Method to start the server
+    public void startServer() {
+        if (!isRunning) {
+            try {
+                super.start();  // Start the NanoHTTPD server
+                isRunning = true;
+                Log.d(TAG, "Server started successfully");
+            } catch (IOException e) {
+                Log.e(TAG, "Error starting server: " + e.getMessage());
+            }
+        }
+    }
+
+    // Method to stop the server
+    public void stopServer() {
+        if (isRunning) {
+            stop();  // Stop the server
+            isRunning = false;
+            Log.d(TAG, "Server stopped");
+        }
+    }
+ */
