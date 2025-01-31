@@ -177,8 +177,17 @@ public class Server extends NanoHTTPD {
     private Response handleStyleRequest() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                byte[] stylesJson = Files.readAllBytes(Paths.get(STYLES_FILE_NAME));
-                return newFixedLengthResponse(Status.OK, "application/json", new ByteArrayInputStream(stylesJson), stylesJson.length);
+                // Adjust the path to access the styles.json file in the assets folder
+                File styleFile = new File("assets/styles.json");  // Use the relative path from the project root
+                // Check if the file exists
+                if (!styleFile.exists()) {
+                    return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "styles.json file not found");
+                }
+                // Read the JSON content directly as a String
+                String stylesJson = new String(Files.readAllBytes(styleFile.toPath()), StandardCharsets.UTF_8);
+
+                // Return the JSON response
+                return newFixedLengthResponse(Status.OK, "application/json", stylesJson);
             } catch (IOException e) {
                 Log.e(TAG, "Error reading styles.json: " + e.getMessage());
                 return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error reading styles.json");

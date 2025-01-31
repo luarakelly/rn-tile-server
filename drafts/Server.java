@@ -1,3 +1,31 @@
+// modular version
+package at.alwinschuster.HttpServer;
+
+import fi.iki.elonen.NanoHTTPD;
+import routes.Tile;
+import routes.Styles;
+
+public class Server {
+    public static void main(String[] args) {
+        // Start the server on port 8080
+        int port = 8080;
+        try {
+            Tile tileRoute = new Tile(port);
+            Styles styleRoute = new Styles(port);
+
+            // Start handling requests for tiles and styles
+            tileRoute.start();
+            styleRoute.start();
+
+            System.out.println("Server started on port " + port);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+//______________________________________________________________
 package at.alwinschuster.HttpServer;
 
 import fi.iki.elonen.NanoHTTPD;
