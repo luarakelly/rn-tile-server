@@ -36,6 +36,9 @@ public class Server extends NanoHTTPD {
     private static final long CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
 
     private ReactContext reactContext;
+    private String bindAddress;
+    private int port;
+
     private Map<String, byte[]> tileCache;
     private File tilesFile;
 
@@ -46,8 +49,10 @@ public class Server extends NanoHTTPD {
 
     public Server(ReactContext context, int port, String bindAddress) {
         super(port);
-        this.bindAddress = bindAddress != null ? bindAddress : "127.0.0.1"; // Default to 127.0.0.1 if not provided
-        reactContext = context;
+        this.reactContext = context;
+        this.port = port;
+        this.bindAddress = bindAddress != null ? bindAddress : "127.0.0.1";  // Default to 127.0.0.1 if not provided
+
         tileCache = new LRUCache<String, byte[]>(MAX_CACHE_SIZE);
         tilesFile = new File(TILE_FILE_NAME);
 
