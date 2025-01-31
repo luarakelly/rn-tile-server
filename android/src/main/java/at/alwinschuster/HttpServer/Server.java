@@ -64,7 +64,7 @@ public class Server extends NanoHTTPD {
     public void start() throws IOException {
         // Start server binding to all available network interfaces (0.0.0.0) Binding to 0.0.0.0:
         super.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false, bindAddress);  // This binds the server to all available network interfaces.
-        Log.d(TAG, "Server started on " bindAddress + ":" + getListeningPort())
+        Log.d(TAG, "Server started on address: " + bindAddress + ":" + port);
     }
 
     private void downloadTiles() {
