@@ -40,5 +40,5 @@ class BridgeServer {
 }
 
 module.exports = {
-  BridgeServer,
+  BridgeServer
 };
