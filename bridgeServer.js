@@ -22,23 +22,23 @@ class BridgeServer {
 
     this.serviceName = serviceName;
     BridgeServer.server = this;
-  }
+  };
 
-  listen(port, bindAddress) {
+  listen(port, bindAddress, callback) {
     if (port < 0 || port > 65535) {
       throw new Error("Invalid port number");
     }
 
-    // Start the server using the native module
-    httpServer.start(port, bindAddress, this.serviceName);
-  }
+    // Start the server using the native module and pass a callback
+    httpServer.start(port, bindAddress, this.serviceName, callback);
+  };
 
   stop() {
     // Stop the server using the native module
     httpServer.stop();
-  }
-}
+  };
+};
 
 module.exports = {
-  BridgeServer,
+  BridgeServer
 };
