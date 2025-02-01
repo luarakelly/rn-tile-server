@@ -188,21 +188,24 @@ public class Server extends NanoHTTPD {
     private Response handleStyleRequest() {
     return CompletableFuture.supplyAsync(() -> {
         try {
-            // Adjust the path to access the styles.json file in the assets folder
-            File styleFile = new File("assets/style.json");  // Use the relative path from the project root
+            // Open the file from assets
+            InputStream is = reactContext.getAssets().open("tile-assets/style.json");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
             
-            // Check if the file exists
-            if (!styleFile.exists()) {
-                return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "style.json file not found");
+            // Read into a StringBuilder for efficiency
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
             }
+            reader.close();
 
-            // Read the JSON content directly as a String
-            String stylesJson = new String(Files.readAllBytes(styleFile.toPath()), StandardCharsets.UTF_8);
-
-            // Return the JSON response
+            String stylesJson = sb.toString();
+            
+            // Return JSON response
             return newFixedLengthResponse(Status.OK, "application/json", stylesJson);
         } catch (IOException e) {
-            Log.e(TAG, "Error reading styles.json: " + e.getMessage());
+            Log.e(TAG, "Error reading style.json: " + e.getMessage());
             return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error reading style.json");
         }
     }, executor).join();
