@@ -1,3 +1,5 @@
+package at.alwinschuster.HttpServer;
+
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.NanoHTTPD.Response.Status;
 
@@ -49,10 +51,12 @@ public class Server extends NanoHTTPD {
     private final ExecutorService executor = Executors.newFixedThreadPool(4); // newFixedThreadPool(4) Limit the thread pool size
 
     public Server(ReactContext context, int port, String bindAddress) {
-        super(bindAddress != null ? bindAddress : "0.0.0.0", port != null ? port : 8080);
+        super(bindAddress != null ? bindAddress : "0.0.0.0", port > 0 ? port : 8080);
+
         this.reactContext = context;
         this.port = port;
         this.bindAddress = bindAddress != null ? bindAddress : "0.0.0.0";  // Default to 127.0.0.1 if not provided
+        
         tileCache = new LRUCache<String, byte[]>(MAX_CACHE_SIZE);
         tilesFile = new File(TILE_FILE_NAME);
 
