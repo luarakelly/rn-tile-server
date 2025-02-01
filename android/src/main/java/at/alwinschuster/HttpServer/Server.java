@@ -186,25 +186,27 @@ public class Server extends NanoHTTPD {
     }
 
     private Response handleStyleRequest() {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                // Adjust the path to access the styles.json file in the assets folder
-                File styleFile = new File("assets/style.json");  // Use the relative path from the project root
-                // Check if the file exists
-                if (!styleFile.exists()) {
-                    return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "style.json file not found");
-                }
-                // Read the JSON content directly as a String
-                String stylesJson = new String(Files.readAllBytes(File.toPath()), StandardCharsets.UTF_8);
-
-                // Return the JSON response
-                return newFixedLengthResponse(Status.OK, "application/json", stylesJson);
-            } catch (IOException e) {
-                Log.e(TAG, "Error reading styles.json: " + e.getMessage());
-                return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error reading style.json");
+    return CompletableFuture.supplyAsync(() -> {
+        try {
+            // Adjust the path to access the styles.json file in the assets folder
+            File styleFile = new File("assets/style.json");  // Use the relative path from the project root
+            
+            // Check if the file exists
+            if (!styleFile.exists()) {
+                return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "style.json file not found");
             }
-        }, executor).join();
-    }
+
+            // Read the JSON content directly as a String
+            String stylesJson = new String(Files.readAllBytes(styleFile.toPath()), StandardCharsets.UTF_8);
+
+            // Return the JSON response
+            return newFixedLengthResponse(Status.OK, "application/json", stylesJson);
+        } catch (IOException e) {
+            Log.e(TAG, "Error reading styles.json: " + e.getMessage());
+            return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error reading style.json");
+        }
+    }, executor).join();
+}
 
     public void stop() {
         // Graceful shutdown logic
