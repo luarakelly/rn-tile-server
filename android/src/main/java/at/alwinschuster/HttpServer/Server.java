@@ -7,6 +7,7 @@ import com.facebook.react.modules.core.DeviceEventManagerModule;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.net.InetSocketAddress;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
