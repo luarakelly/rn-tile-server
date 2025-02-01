@@ -5,6 +5,9 @@ import fi.iki.elonen.NanoHTTPD.Response.Status;
 import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -66,10 +69,20 @@ public class Server extends NanoHTTPD {
     }
 
     @Override
+    public InetAddress getLocalAddress() {
+        try {
+            // Return 0.0.0.0 to bind to all network interfaces
+            return InetAddress.getByName(bindAddress);
+        } catch (UnknownHostException e) {
+            Log.e(TAG, "Error getting local address", e);
+            return super.getLocalAddress();  // Fallback to default (127.0.0.1)
+        }
+    }
+
+    @Override
     public void start() throws IOException {
-        // Start server binding to all available network interfaces (0.0.0.0) Binding to 0.0.0.0:
-        super.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false, bindAddress);  // This binds the server to all available network interfaces.
-        Log.d(TAG, "Server started on address: " + bindAddress + ":" + port);
+        super.start();  // Start the server normally after overriding the address
+        Log.d(TAG, "Server started on: " + bindAddress + ":" + port);
     }
 
     private void downloadTiles() {
@@ -251,3 +264,111 @@ public class Server extends NanoHTTPD {
     }
     }
  */
+
+ /**
+  * import java.io.*;
+import java.net.*;
+import java.util.concurrent.*;
+import android.util.Log;
+
+public class Server extends NanoHTTPD {
+    private static final String TAG = "HttpServer";
+    private static final int MAX_CACHE_SIZE = 100;
+    private static final long CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+    private static final int DEFAULT_PORT = 8080;
+    private static final String DEFAULT_BIND_ADDRESS = "127.0.0.1";
+
+    private ReactContext reactContext;
+    private String bindAddress;
+    private int port;
+
+    private ExecutorService executor;
+
+    private ServerSocket serverSocket;  // ServerSocket for custom binding
+
+    public Server(ReactContext context, int port, String bindAddress) {
+        super(port); // For compatibility, although not used
+        this.reactContext = context;
+        this.port = port;
+        this.bindAddress = bindAddress != null ? bindAddress : DEFAULT_BIND_ADDRESS;
+        this.executor = Executors.newFixedThreadPool(4);  // Thread pool for handling requests
+
+        Log.d(TAG, "Server initialized on port: " + port + " binding to: " + bindAddress);
+    }
+
+    @Override
+    public void start() throws IOException {
+        try {
+            // Create a new ServerSocket that binds to the specified address and port
+            InetAddress inetAddress = InetAddress.getByName(bindAddress);
+            serverSocket = new ServerSocket(port, 0, inetAddress);
+
+            Log.d(TAG, "Server started, waiting for connections...");
+
+            // Accept client connections and process them
+            while (!serverSocket.isClosed()) {
+                Socket clientSocket = serverSocket.accept();
+                Log.d(TAG, "Client connected: " + clientSocket.getInetAddress());
+
+                // Handle the client connection in a separate thread
+                executor.submit(() -> {
+                    try {
+                        handleClient(clientSocket);
+                    } catch (IOException e) {
+                        Log.e(TAG, "Error handling client: " + e.getMessage());
+                    }
+                });
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "Error starting server: " + e.getMessage());
+            throw e;
+        }
+    }
+
+    private void handleClient(Socket clientSocket) throws IOException {
+        // Create an HTTP session and delegate the request to NanoHTTPD
+        NanoHTTPD.IHTTPSession session = new NanoHTTPD.HttpSession(clientSocket, this);
+        Response response = serve(session);
+        
+        // Write the response back to the client
+        try (OutputStream os = clientSocket.getOutputStream()) {
+            response.send(os);
+            os.flush();
+        } catch (IOException e) {
+            Log.e(TAG, "Error sending response: " + e.getMessage());
+        } finally {
+            clientSocket.close();
+        }
+    }
+
+    @Override
+    public Response serve(IHTTPSession session) {
+        // Handle incoming requests
+        String uri = session.getUri();
+
+        if (uri.equals("/")) {
+            return newFixedLengthResponse("Server is running!");
+        } else {
+            return newFixedLengthResponse(Status.NOT_FOUND, MIME_PLAINTEXT, "Not Found");
+        }
+    }
+
+    public void stop() throws IOException {
+        // Close the server socket and stop accepting new connections
+        if (serverSocket != null && !serverSocket.isClosed()) {
+            serverSocket.close();
+            Log.d(TAG, "Server stopped");
+        }
+        executor.shutdown();  // Shut down the executor service gracefully
+    }
+
+    // Other methods, like cleanup, tile handling, etc., can go here...
+
+}
+______________________
+Could not connet to development server.
+failed to connect to {192.168.1.101 (port8081) from /10.0.2.16(port 41846) after 5000ms
+___
+ipconfig
+IPv4 Address. . . . . . . . . . . : 192.168.1.101
+  */
