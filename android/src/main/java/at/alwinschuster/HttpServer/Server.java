@@ -52,10 +52,10 @@ public class Server extends NanoHTTPD {
     private final ExecutorService executor = Executors.newFixedThreadPool(4); // newFixedThreadPool(4) Limit the thread pool size
 
     public Server(ReactContext context, int port, String bindAddress) {
+        super(bindAddress, port);
         this.reactContext = context;
         this.port = port;
         this.bindAddress = bindAddress != null ? bindAddress : "127.0.0.1";  // Default to 127.0.0.1 if not provided
-        super(bindAddress, port);
         tileCache = new LRUCache<String, byte[]>(MAX_CACHE_SIZE);
         tilesFile = new File(TILE_FILE_NAME);
 
