@@ -195,13 +195,13 @@ public class Server extends NanoHTTPD {
                     return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "style.json file not found");
                 }
                 // Read the JSON content directly as a String
-                String sJson = new String(Files.readAllBytes(File.toPath()), StandardCharsets.UTF_8);
+                String stylesJson = new String(Files.readAllBytes(File.toPath()), StandardCharsets.UTF_8);
 
                 // Return the JSON response
                 return newFixedLengthResponse(Status.OK, "application/json", stylesJson);
             } catch (IOException e) {
                 Log.e(TAG, "Error reading styles.json: " + e.getMessage());
-                return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error reading styles.json");
+                return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error reading style.json");
             }
         }, executor).join();
     }
