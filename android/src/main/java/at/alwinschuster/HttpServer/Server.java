@@ -51,7 +51,7 @@ public class Server extends NanoHTTPD {
     private final ExecutorService executor = Executors.newFixedThreadPool(4); // newFixedThreadPool(4) Limit the thread pool size
 
     public Server(ReactContext context, int port, String bindAddress) {
-        super(port);
+        super(new InetSocketAddress(bindAddress, 8080));
         this.reactContext = context;
         this.port = port;
         this.bindAddress = bindAddress != null ? bindAddress : "127.0.0.1";  // Default to 127.0.0.1 if not provided
@@ -66,23 +66,6 @@ public class Server extends NanoHTTPD {
         }
 
         scheduleCleanup();
-    }
-
-    @Override
-    public InetAddress getLocalAddress() {
-        try {
-            // Return 0.0.0.0 to bind to all network interfaces
-            return InetAddress.getByName(bindAddress);
-        } catch (UnknownHostException e) {
-            Log.e(TAG, "Error getting local address", e);
-            return super.getLocalAddress();  // Fallback to default (127.0.0.1)
-        }
-    }
-
-    @Override
-    public void start() throws IOException {
-        super.start();  // Start the server normally after overriding the address
-        Log.d(TAG, "Server started on: " + bindAddress + ":" + port);
     }
 
     private void downloadTiles() {
