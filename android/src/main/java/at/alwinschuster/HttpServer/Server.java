@@ -1,4 +1,4 @@
-package at.alwinschuster.HttpServer;
+ package at.alwinschuster.HttpServer;
 
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.NanoHTTPD.Response.Status;
@@ -63,12 +63,8 @@ public class Server extends NanoHTTPD {
 
         Log.d(TAG, "Server started");
 
-        if (tilesFile == null || tilesFile.isEmpty()) {
-            Log.e(TAG, "MBTiles file path is missing! Please ensure the file is downloaded.");
-        } else {
-            if (!tilesFile.exists()) {
-                Log.e(TAG, "MBTiles file not found at: " + tilesFile.getAbsolutePath());
-            }
+        if (tilesFile == null || !tilesFile.exists()) {
+            Log.e(TAG, "MBTiles file path is missing or not found!");
         }
 
         scheduleCleanup();
@@ -76,7 +72,7 @@ public class Server extends NanoHTTPD {
     public void setTilesFile(File tilesFile) {
         this.tilesFile = tilesFile;
     }
-    public void setStyleJson(File styleJson) {
+    public void setStyleJson(String styleJson) {
         this.styleJson = styleJson;
     }
 
