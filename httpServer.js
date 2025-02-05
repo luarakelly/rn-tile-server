@@ -13,6 +13,13 @@ module.exports = {
 
   stop: () => {
     Server.stop();
+  },
+
+  storagePath: (uri) => {
+    Server.storagePath(uri);
+  },
+
+  styleJson: (style) => {
+    Server.styleJson(style);
   }
 };
-
