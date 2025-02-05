@@ -2,7 +2,7 @@
 
 import httpServer from "./httpServer";
 
-//The BridgeServer now only focuses on handling the server's lifecycle:
+//The BridgeServer have to only focuses on handling the server's lifecycle and server assets:
 class BridgeServer {
   static server;
 
@@ -24,6 +24,13 @@ class BridgeServer {
     BridgeServer.server = this;
   };
 
+  storagePath(uri) {
+    httpServer.storagePath(uri);
+  }
+  styleJson(style) {
+    httpServer.styleJson(style);
+  }
+  
   listen(port, bindAddress, callback) {
     if (port < 0 || port > 65535) {
       throw new Error("Invalid port number");
