@@ -32,8 +32,6 @@ import android.util.Log;
 
 public class Server extends NanoHTTPD {
     private static final String TAG = "HttpServer";
-    private static final String TILE_FILE_NAME = "tiles.mbtiles";
-    private static final String STYLES_FILE_NAME = "styles.json";
     private static final String TILE_CACHE_DIR = "tile_cache";
     private static final int MAX_CACHE_SIZE = 100;
     private static final long CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
@@ -43,42 +41,43 @@ public class Server extends NanoHTTPD {
     private int port;
 
     private Map<String, byte[]> tileCache;
-    private File tilesFile;
+    private File tilesFile;  // Variable to store the tile file path
+    private String styleJson;  // Variable to hold the style JSON
 
     private Thread cleanupThread; // Thread for cleanup
 
     // Executor for handling asynchronous tasks
     private final ExecutorService executor = Executors.newFixedThreadPool(4); // newFixedThreadPool(4) Limit the thread pool size
 
-    public Server(ReactContext context, int port, String bindAddress) {
+    public Server(ReactContext context, int port, String bindAddress) { // , String tileFilePath
         super(bindAddress != null ? bindAddress : "0.0.0.0", port > 0 ? port : 8080);
 
         this.reactContext = context;
         this.port = port;
+        this.tilesFile = null;  // Initialize styleJson to a default or empty value
+        this.styleJson = null;  // Initialize styleJson to a default or empty value
         this.bindAddress = bindAddress != null ? bindAddress : "0.0.0.0";  // Default to 127.0.0.1 if not provided
         
         tileCache = new LRUCache<String, byte[]>(MAX_CACHE_SIZE);
-        tilesFile = new File(TILE_FILE_NAME);
+        //tilesFile = new File(TILE_FILE_NAME);
 
         Log.d(TAG, "Server started");
 
-        if (!tilesFile.exists()) {
-            downloadTiles();
+        if (tilesFile == null || tilesFile.isEmpty()) {
+            Log.e(TAG, "MBTiles file path is missing! Please ensure the file is downloaded.");
+        } else {
+            if (!tilesFile.exists()) {
+                Log.e(TAG, "MBTiles file not found at: " + tilesFile.getAbsolutePath());
+            }
         }
 
         scheduleCleanup();
     }
-   
-    private void downloadTiles() {
-        CompletableFuture.runAsync(() -> {
-            try {
-                URL url = new URL("https://www.dropbox.com/scl/fi/7olc36bmmpks3fz6ftyoa/finland-shortbread-1.0.mbtiles?rlkey=1bh9yfcpaol5sruk3sy36x4ut&st=pyz2t7s0&dl=1");
-                Files.copy(url.openStream(), Paths.get(TILE_FILE_NAME), StandardCopyOption.REPLACE_EXISTING);
-                Log.d(TAG, "Tiles downloaded successfully.");
-            } catch (Exception e) {
-                Log.e(TAG, "Error downloading tiles: " + e.getMessage());
-            }
-        }, executor);
+    public void setTilesFile(File tilesFile) {
+        this.tilesFile = tilesFile;
+    }
+    public void setStyleJson(File styleJson) {
+        this.styleJson = styleJson;
     }
 
     private void scheduleCleanup() {
@@ -118,7 +117,8 @@ public class Server extends NanoHTTPD {
         } else if (uri.matches("/tile/\\d+/\\d+/\\d+")) {
             return handleTileRequest(uri);
         } else if (uri.equals("/style.json")) {
-            return handleStyleRequest();
+            // Return the current styleJson
+            return newFixedLengthResponse(Status.OK, "application/json", styleJson);
         } else {
             return newFixedLengthResponse(Status.NOT_FOUND, MIME_PLAINTEXT, "Not Found");
         }
@@ -127,22 +127,31 @@ public class Server extends NanoHTTPD {
     private Response handleTileRequest(String tileRequest) {
         return CompletableFuture.supplyAsync(() -> {
             byte[] tileData = tileCache.get(tileRequest);
+            //If not found in cache, attempt to fetch the tile
             if (tileData == null) {
-                tileData = getTileData(tileRequest);
-                if (tileData != null) {
-                    tileCache.put(tileRequest, tileData);
+                log.info("Tile not found in cache for request: {}", tileRequest);
+                try {
+                    tileData = getTileData(tileRequest);
+                    if (tileData != null) {
+                        tileCache.put(tileRequest, tileData); // Cache the tile data for future requests
+                    }
+                } catch (Exception e) {
+                    log.error("Error fetching tile data for request: {}", tileRequest, e);
+                    return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error fetching tile data");
                 }
             }
             if (tileData != null) {
                 return newFixedLengthResponse(Status.OK, "application/x-protobuf", new ByteArrayInputStream(tileData), tileData.length);
             } else {
+                // Tile not found, return 404
+                log.warn("Tile not found for request: {}", tileRequest);
                 return newFixedLengthResponse(Status.NOT_FOUND, MIME_PLAINTEXT, "Tile not found");
             }
         }, executor).join();  // Non-blocking, returns the response once the task is complete
     }
 
     private byte[] getTileData(String tileRequest) {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + TILE_FILE_NAME)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + tilesFile.getAbsolutePath())) {
             String[] parts = tileRequest.split("/");
             if (parts.length < 4) return null;
 
@@ -186,32 +195,6 @@ public class Server extends NanoHTTPD {
         return null;
     }
 
-    private Response handleStyleRequest() {
-    return CompletableFuture.supplyAsync(() -> {
-        try {
-            // Open the file from assets
-            InputStream is = reactContext.getAssets().open("tile-assets/style.json");
-            BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-            
-            // Read into a StringBuilder for efficiency
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line);
-            }
-            reader.close();
-
-            String stylesJson = sb.toString();
-            
-            // Return JSON response
-            return newFixedLengthResponse(Status.OK, "application/json", stylesJson);
-        } catch (IOException e) {
-            Log.e(TAG, "Error reading style.json: " + e.getMessage());
-            return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error reading style.json");
-        }
-    }, executor).join();
-}
-
     public void stop() {
         // Graceful shutdown logic
         if (cleanupThread != null) {
@@ -238,6 +221,32 @@ public class Server extends NanoHTTPD {
 }
 
 /**
+ * private Response handleStyleRequest() {
+    return CompletableFuture.supplyAsync(() -> {
+        try {
+            // Open the file from assets
+            InputStream is = reactContext.getAssets().open("tile-assets/style.json");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+            
+            // Read into a StringBuilder for efficiency
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            reader.close();
+
+            String stylesJson = sb.toString();
+            
+            // Return JSON response
+            return newFixedLengthResponse(Status.OK, "application/json", stylesJson);
+        } catch (IOException e) {
+            Log.e(TAG, "Error reading style.json: " + e.getMessage());
+            return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error reading style.json");
+        }
+    }, executor).join();
+}
+ * _________________________________________
  * private void scheduleCleanup() {
         executor.submit(() -> {
             while (!Thread.interrupted()) {
