@@ -110,7 +110,7 @@ public class Server extends NanoHTTPD {
 
         if (uri.equals("/")) {
             return newFixedLengthResponse("Server is running!");
-        } else if (uri.matches("/tile/\\d+/\\d+/\\d+")) {
+        } else if (uri.matches("/tile/\\d+/\\d+/\\d+\\.pbf")) {
             return handleTileRequest(uri);
         } else if (uri.equals("/style.json")) {
             // Return the current styleJson
