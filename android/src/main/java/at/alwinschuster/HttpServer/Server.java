@@ -125,14 +125,14 @@ public class Server extends NanoHTTPD {
             byte[] tileData = tileCache.get(tileRequest);
             //If not found in cache, attempt to fetch the tile
             if (tileData == null) {
-                log.info("Tile not found in cache for request: {}", tileRequest);
+                Log.d("Tile not found in cache for request: {}", tileRequest);
                 try {
                     tileData = getTileData(tileRequest);
                     if (tileData != null) {
                         tileCache.put(tileRequest, tileData); // Cache the tile data for future requests
                     }
                 } catch (Exception e) {
-                    log.error("Error fetching tile data for request: {}", tileRequest, e);
+                    Log.e("Error fetching tile data for request: {}", tileRequest, e);
                     return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error fetching tile data");
                 }
             }
@@ -140,7 +140,7 @@ public class Server extends NanoHTTPD {
                 return newFixedLengthResponse(Status.OK, "application/x-protobuf", new ByteArrayInputStream(tileData), tileData.length);
             } else {
                 // Tile not found, return 404
-                log.warn("Tile not found for request: {}", tileRequest);
+                Log.w("Tile not found for request: {}", tileRequest);
                 return newFixedLengthResponse(Status.NOT_FOUND, MIME_PLAINTEXT, "Tile not found");
             }
         }, executor).join();  // Non-blocking, returns the response once the task is complete
