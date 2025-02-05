@@ -16,9 +16,12 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
     ReactApplicationContext reactContext;
 
     private static final String MODULE_NAME = "HttpServer";
-
+    private static final String TILE_FILE_NAME = "tiles.mbtiles";
+    private static final String STYLES_FILE_NAME = "styles.json";
     private static int port;
     private static Server server = null;
+    private static File tilesFile = null; // Variable to store the tile file
+    private String styleJson;  // Variable to store the styleJson
 
     public HttpServerModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -32,11 +35,39 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
     }
 
     @ReactMethod
+    public void styleJson(String style) {       
+        if (server != null) {
+            styleJson = style;  // Store the style JSON in the module
+            server.setStyleJson(styleJson);
+            Log.d(MODULE_NAME, "Style JSON received: ") 
+        } else {
+            Log.e(MODULE_NAME, "Server is not initialized yet");
+        } 
+    }
+
+    @ReactMethod
+    public void storagePath(String localStoragePath) {
+        if (server != null) {
+            Log.d(MODULE_NAME, "Map local storage path received: " + localStoragePath);
+            tilesFile = new File(localStoragePath + TILE_FILE_NAME); // You can store the file path to use later
+
+            if (tilesFile.exists()) {
+                server.setTilesFile(tilesFile);  // Set the tile file in the server
+                Log.d(MODULE_NAME, "MBTiles file exists: " + tilesFile.getAbsolutePath());
+            } else {
+                Log.e(MODULE_NAME, "MBTiles file does not exist.");
+            }    
+        } else {
+            Log.e(MODULE_NAME, "Server is not initialized yet");
+        }   
+    }
+
+    @ReactMethod
     public void start(int port, String bindAddress, String serviceName, Callback callback) {
         Log.d(MODULE_NAME, "Initializing server...");
         this.port = port;
 
-        startServer(bindAddress, callback);
+        startServer(bindAddress, callback);        
     }
 
     @ReactMethod
@@ -75,7 +106,7 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
             }
         });
     }
-
+    
     private void startServer(String bindAddress, Callback callback) {
         if (this.port == 0) {
             callback.invoke("Invalid port number", null);
@@ -130,3 +161,36 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
         }
     }
  */
+
+ /**
+     * private void downloadTiles() {
+        CompletableFuture.runAsync(() -> {
+            try {
+                URL url = new URL("https://www.dropbox.com/scl/fi/7olc36bmmpks3fz6ftyoa/finland-shortbread-1.0.mbtiles?rlkey=1bh9yfcpaol5sruk3sy36x4ut&st=pyz2t7s0&dl=1");
+                Files.copy(url.openStream(), Paths.get(TILE_FILE_NAME), StandardCopyOption.REPLACE_EXISTING);
+                Log.d(TAG, "Tiles downloaded successfully.");
+            } catch (Exception e) {
+                Log.e(TAG, "Error downloading tiles: " + e.getMessage());
+            } 
+        }, executor);
+    }
+
+    private void downloadTiles(final Runnable onSuccess) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                // Download the tiles file asynchronously
+                URL url = new URL("https://www.dropbox.com/scl/fi/7olc36bmmpks3fz6ftyoa/finland-shortbread-1.0.mbtiles?rlkey=1bh9yfcpaol5sruk3sy36x4ut&st=pyz2t7s0&dl=1");
+                downloadedTilesFile = new File(getReactApplicationContext().getFilesDir(), "tiles.mbtiles");
+                Files.copy(url.openStream(), downloadedTilesFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                Log.d(MODULE_NAME, "Tiles downloaded successfully.");
+
+                // Invoke the onSuccess callback once the tiles are downloaded
+                onSuccess.run();
+            } catch (Exception e) {
+                Log.e(MODULE_NAME, "Error downloading tiles: " + e.getMessage());
+                // If there was an error, notify with a failure
+                onSuccess.run();
+            }
+        });
+    }
+     */
