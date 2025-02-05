@@ -7,10 +7,10 @@ import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReadableArray;
+import java.io.File;
+import android.util.Log;
 
 import java.io.IOException;
-
-import android.util.Log;
 
 public class HttpServerModule extends ReactContextBaseJavaModule implements LifecycleEventListener {
     ReactApplicationContext reactContext;
@@ -49,7 +49,7 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
     public void storagePath(String localStoragePath) {
         if (server != null) {
             Log.d(MODULE_NAME, "Map local storage path received: " + localStoragePath);
-            tilesFile = new File(localStoragePath + TILE_FILE_NAME); // You can store the file path to use later
+            tilesFile = new File(localStoragePath + TILE_FILE_NAME); // Store the file path to use later
 
             if (tilesFile.exists()) {
                 server.setTilesFile(tilesFile);  // Set the tile file in the server
