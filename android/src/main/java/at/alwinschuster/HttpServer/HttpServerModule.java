@@ -39,7 +39,7 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
         if (server != null) {
             styleJson = style;  // Store the style JSON in the module
             server.setStyleJson(styleJson);
-            Log.d(MODULE_NAME, "Style JSON received: ") 
+            Log.d(MODULE_NAME, "Style JSON received ");
         } else {
             Log.e(MODULE_NAME, "Server is not initialized yet");
         } 
