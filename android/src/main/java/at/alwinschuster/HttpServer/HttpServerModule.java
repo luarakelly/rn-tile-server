@@ -46,31 +46,22 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
     }
 
     @ReactMethod
-    public void storagePath(String localStoragePath, Callback callback) {      
+    public void storagePath(Callback callback) {      
         if (server != null) {
-            String folderPath = reactContext.getFilesDir().getAbsolutePath() + "/map-assets/";
-            File folder = new File(folderPath);
-            if (folder.exists()) {
-                callback.invoke(folderPath, null);
-                tilesFile = new File(folderPath + TILE_FILE_NAME);
+            String tilesFilePath = reactContext.getFilesDir().getAbsolutePath() + "/map-assets/" + TILE_FILE_NAME;
+            File tilesFile = new File(tilesFilePath);
+            if (tilesFile.exists()) {
+                callback.invoke("Found: " + tilesFilePath, null);
                 server.setTilesFile(tilesFile);
             } else {
                 callback.invoke("/map-assets/ do not exit in: " + reactContext.getFilesDir().getAbsolutePath(), null);
             }
-
-            Log.d(MODULE_NAME, "Map local storage path received: " + localStoragePath);
-            tilesFile = new File(localStoragePath + TILE_FILE_NAME); // Store the file path to use later
-
-            if (tilesFile.exists()) {
-                server.setTilesFile(tilesFile);  // Set the tile file in the server
-                Log.d(MODULE_NAME, "MBTiles file  path from js exists: " + tilesFile.getAbsolutePath());
-            } else {
-                Log.e(MODULE_NAME, "MBTiles file path from js does not exist.");
-            }    
+    
         } else {
             Log.e(MODULE_NAME, "Server is not initialized yet");
         }   
     }
+    
     @ReactMethod
     public void start(int port, String bindAddress, String serviceName, Callback callback) {
         Log.d(MODULE_NAME, "Initializing server...");
@@ -139,6 +130,17 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
 }
 
 /**
+
+Log.d(MODULE_NAME, "Map local storage path received: " + localStoragePath);
+            tilesFile = new File(localStoragePath + TILE_FILE_NAME); // Store the file path to use later
+
+            if (tilesFile.exists()) {
+                server.setTilesFile(tilesFile);  // Set the tile file in the server
+                Log.d(MODULE_NAME, "MBTiles file  path from js exists: " + tilesFile.getAbsolutePath());
+            } else {
+                Log.e(MODULE_NAME, "MBTiles file path from js does not exist.");
+            }
+            ______________________________________________________________________
  * // Method to start the server
     public void startServer() {
         if (!isRunning) {
