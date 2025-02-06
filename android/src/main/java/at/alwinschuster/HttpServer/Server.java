@@ -1,4 +1,4 @@
-  package at.alwinschuster.HttpServer;
+package at.alwinschuster.HttpServer;
 
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.NanoHTTPD.Response.Status;
@@ -101,7 +101,10 @@ public class Server extends NanoHTTPD {
         if (uri.equals("/")) {
             return newFixedLengthResponse("Server is running!");
         } else if (uri.matches("/tile/\\d+/\\d+/\\d+\\.pbf")) {
-            return handleTileRequest(uri);
+            // Asynchronously handle the tile request
+            CompletableFuture<Response> futureResponse = handleTileRequest(uri);
+            // Return a placeholder response until the async task completes
+            return newFixedLengthResponse("Processing request... Please wait.");
         } else if (uri.equals("/style.json")) {
             return newFixedLengthResponse(Status.OK, "application/json", styleJson); // Return the current styleJson
         } else {
@@ -109,10 +112,11 @@ public class Server extends NanoHTTPD {
         }
     }
 
-    private Response handleTileRequest(String tileRequest) {
+    private CompletableFuture<Response> handleTileRequest(String tileRequest) {
+        // Use CompletableFuture to handle the request asynchronously
         return CompletableFuture.supplyAsync(() -> {
             byte[] tileData = tileCache.get(tileRequest);
-            //If not found in cache, attempt to fetch the tile
+            // If not found in cache, attempt to fetch the tile
             if (tileData == null) {
                 Log.d("Tile not found in cache for request: {}", tileRequest);
                 try {
@@ -132,7 +136,7 @@ public class Server extends NanoHTTPD {
                 Log.w("Tile not found for request: {}", tileRequest);
                 return newFixedLengthResponse(Status.NOT_FOUND, MIME_PLAINTEXT, "Tile not found");
             }
-        }, executor).join();  // Non-blocking, returns the response once the task is complete
+        }, executor); // Non-blocking, returns the response once the task is complete
     }
 
     private byte[] getTileData(String tileRequest) {
