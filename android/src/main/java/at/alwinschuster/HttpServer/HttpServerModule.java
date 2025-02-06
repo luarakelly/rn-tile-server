@@ -99,12 +99,7 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
 
     @Override
     public void onHostDestroy() {
-        stopServer(new Callback() {
-            @Override
-            public void invoke(Object... args) {
-                // Callback for cleanup (if any)
-            }
-        });
+        stopServer();
     }
     
     private void startServer(String bindAddress, Callback callback) {
