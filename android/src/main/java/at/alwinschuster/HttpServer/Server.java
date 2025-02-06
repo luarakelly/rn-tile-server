@@ -1,22 +1,22 @@
- package at.alwinschuster.HttpServer;
+  package at.alwinschuster.HttpServer;
 
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.NanoHTTPD.Response.Status;
 
 import com.facebook.react.bridge.ReactContext;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+//import java.io.BufferedReader;
+//import java.io.InputStreamReader;
+//import java.net.URL;
+//import java.nio.file.Files;
+//import java.nio.file.Paths;
+//import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -31,49 +31,39 @@ import java.util.zip.GZIPInputStream;
 import android.util.Log;
 
 public class Server extends NanoHTTPD {
+    private ReactContext reactContext;
+    private Map<String, byte[]> tileCache;
+    private File tilesFile;  // Variable to store the tile mbfile
+    private String styleJson;  // Variable to hold the style JSON
+    private Thread cleanupThread; 
+    private static String LOCAL_STORAGE_PATH;
+
     private static final String TAG = "HttpServer";
     private static final String TILE_CACHE_DIR = "tile_cache";
     private static final int MAX_CACHE_SIZE = 100;
     private static final long CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
-
-    private ReactContext reactContext;
-    private String bindAddress;
-    private int port;
-
-    private Map<String, byte[]> tileCache;
-    private File tilesFile;  // Variable to store the tile file path
-    private String styleJson;  // Variable to hold the style JSON
-
-    private Thread cleanupThread; // Thread for cleanup
+    private static final String TILE_FILE_NAME = "tiles.mbtiles";
 
     // Executor for handling asynchronous tasks
     private final ExecutorService executor = Executors.newFixedThreadPool(4); // newFixedThreadPool(4) Limit the thread pool size
 
-    public Server(ReactContext context, int port, String bindAddress) { // , String tileFilePath
-        super(bindAddress != null ? bindAddress : "0.0.0.0", port > 0 ? port : 8080);
+    public Server(ReactContext context, int port, String bindAddress) { 
+        super(bindAddress != null ? bindAddress : "0.0.0.0", port);
 
-        this.reactContext = context;
-        this.port = port;
-        this.tilesFile = null;  // Initialize styleJson to a default or empty value
-        this.styleJson = null;  // Initialize styleJson to a default or empty value
-        this.bindAddress = bindAddress != null ? bindAddress : "0.0.0.0";  // Default to 127.0.0.1 if not provided
-        
+        reactContext = context;        
         tileCache = new LRUCache<String, byte[]>(MAX_CACHE_SIZE);
-        //tilesFile = new File(TILE_FILE_NAME);
-
+        LOCAL_STORAGE_PATH = reactContext.getFilesDir().getAbsolutePath() + "/map-assets/" ;
+        tilesFile = new File(LOCAL_STORAGE_PATH + TILE_FILE_NAME);
         Log.d(TAG, "Server started");
 
         if (tilesFile == null || !tilesFile.exists()) {
             Log.e(TAG, "MBTiles file path is missing or not found!");
+            throw new IOException("Tiles file not found");
         }
-
         scheduleCleanup();
     }
-    public void setTilesFile(File tilesFile) {
-        this.tilesFile = tilesFile;
-    }
-    public void setStyleJson(String styleJson) {
-        this.styleJson = styleJson;
+    public void setStyleJson(String styles) {
+        styleJson = styles;
     }
 
     private void scheduleCleanup() {
@@ -107,16 +97,16 @@ public class Server extends NanoHTTPD {
     @Override
     public Response serve(IHTTPSession session) {
         String uri = session.getUri();
+        Log.d(TAG, "Request received!" + uri);
 
         if (uri.equals("/")) {
             return newFixedLengthResponse("Server is running!");
         } else if (uri.matches("/tile/\\d+/\\d+/\\d+\\.pbf")) {
             return handleTileRequest(uri);
         } else if (uri.equals("/style.json")) {
-            // Return the current styleJson
-            return newFixedLengthResponse(Status.OK, "application/json", styleJson);
+            return newFixedLengthResponse(Status.OK, "application/json", styleJson); // Return the current styleJson
         } else {
-            return newFixedLengthResponse(Status.NOT_FOUND, MIME_PLAINTEXT, "Not Found");
+            return newFixedLengthResponse(Status.NOT_FOUND, MIME_PLAINTEXT, "End-point Not Found");
         }
     }
 
@@ -147,7 +137,7 @@ public class Server extends NanoHTTPD {
     }
 
     private byte[] getTileData(String tileRequest) {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + tilesFile.getAbsolutePath())) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + tilesFile)) {
             String[] parts = tileRequest.split("/");
             if (parts.length < 4) return null;
 
