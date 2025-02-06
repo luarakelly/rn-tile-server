@@ -71,10 +71,10 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
     }
 
     @ReactMethod
-    public void stop(Callback callback) {
+    public void stop() {
         Log.d(MODULE_NAME, "Stopping server...");
         // Graceful shutdown process
-        stopServer(callback);
+        stopServer();
     }
 
     @ReactMethod
@@ -125,18 +125,14 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
         }
     }
 
-    private void stopServer(Callback callback) {
+    private void stopServer() {
         if (server != null) {
             server.stop(); // Graceful stop
             server = null; // Nullify server instance after stopping
-            port = 0; // Reset port
-            callback.invoke(null, "Server stopped successfully");
-        } else {
-            callback.invoke("Server is not running", null);
+            port = 0; // Reset port  
         }
     }
 }
-
 
 /**
  * // Method to start the server
