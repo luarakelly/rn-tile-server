@@ -56,9 +56,8 @@ public class Server extends NanoHTTPD {
         tilesFile = new File(LOCAL_STORAGE_PATH + TILE_FILE_NAME);
         Log.d(TAG, "Server started");
 
-        if (tilesFile == null || !tilesFile.exists()) {
-            Log.e(TAG, "MBTiles file path is missing or not found!");
-            throw new IOException("Tiles file not found");
+        if (!tilesFile.exists()) {
+            Log.e(TAG, "MBTiles file path is missing!");
         }
         scheduleCleanup();
     }
