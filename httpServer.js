@@ -15,8 +15,8 @@ module.exports = {
     Server.stop();
   },
 
-  storagePath: (uri, callback) => {
-    Server.storagePath(uri, callback);
+  storagePath: (callback) => {
+    Server.storagePath(callback);
   },
 
   styleJson: (style) => {
