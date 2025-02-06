@@ -24,9 +24,6 @@ class BridgeServer {
     BridgeServer.server = this;
   };
 
-  storagePath(callback) {
-    httpServer.storagePath(callback);
-  }
   styleJson(style) {
     httpServer.styleJson(style);
   }
