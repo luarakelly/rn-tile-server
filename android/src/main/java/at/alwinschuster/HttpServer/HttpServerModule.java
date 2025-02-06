@@ -46,7 +46,7 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
     }
 
     @ReactMethod
-    public void storagePath(String localStoragePath Callback callback) {      
+    public void storagePath(String localStoragePath, Callback callback) {      
         if (server != null) {
             String folderPath = reactContext.getFilesDir().getAbsolutePath() + "/map-assets/";
             File folder = new File(folderPath);
