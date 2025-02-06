@@ -15,10 +15,6 @@ module.exports = {
     Server.stop();
   },
 
-  storagePath: (callback) => {
-    Server.storagePath(callback);
-  },
-
   styleJson: (style) => {
     Server.styleJson(style);
   }
