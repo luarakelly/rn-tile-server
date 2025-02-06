@@ -16,12 +16,9 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
     ReactApplicationContext reactContext;
 
     private static final String MODULE_NAME = "HttpServer";
-    private static final String TILE_FILE_NAME = "tiles.mbtiles";
-    private static final String STYLES_FILE_NAME = "styles.json";
+    
     private static int port;
     private static Server server = null;
-    private static File tilesFile = null; // Variable to store the tile file
-    private String styleJson;  // Variable to store the styleJson
 
     public HttpServerModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -37,29 +34,11 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
     @ReactMethod
     public void styleJson(String style) {       
         if (server != null) {
-            styleJson = style;  // Store the style JSON in the module
             server.setStyleJson(styleJson);
             Log.d(MODULE_NAME, "Style JSON received ");
         } else {
             Log.e(MODULE_NAME, "Server is not initialized yet");
         } 
-    }
-
-    @ReactMethod
-    public void storagePath(Callback callback) {      
-        if (server != null) {
-            String tilesFilePath = reactContext.getFilesDir().getAbsolutePath() + "/map-assets/" + TILE_FILE_NAME;
-            File tilesFile = new File(tilesFilePath);
-            if (tilesFile.exists()) {
-                callback.invoke("Found: " + tilesFilePath, null);
-                server.setTilesFile(tilesFile);
-            } else {
-                callback.invoke("/map-assets/ do not exit in: " + reactContext.getFilesDir().getAbsolutePath(), null);
-            }
-    
-        } else {
-            Log.e(MODULE_NAME, "Server is not initialized yet");
-        }   
     }
     
     @ReactMethod
