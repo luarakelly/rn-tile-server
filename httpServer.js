@@ -1,6 +1,16 @@
 "use strict";
 
 import { NativeModules } from "react-native";
+
+const { OkhttpInterceptor } = NativeModules;
+
+// Initialize the interceptor when the app starts
+OkhttpInterceptor.initializeInterceptor()
+  .then(() => console.log("Interceptor initialized"))
+  .catch((error) => console.error("Interceptor failed:", error));
+
+/*
+import { NativeModules } from "react-native";
 const Server = NativeModules.HttpServer;
 
 module.exports = {
@@ -16,3 +26,4 @@ module.exports = {
   }
 };
 
+*/

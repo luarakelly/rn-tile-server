@@ -1,5 +1,64 @@
-package at.alwinschuster.HttpServer;
+package at.LuaraSilva.OkhttpInterceptor;
 
+import android.content.Context;
+import androidx.annotation.NonNull;
+
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.Promise;
+
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Interceptor;
+import okhttp3.Response;
+
+import java.io.IOException;
+
+import org.maplibre.gl.module.http.HttpRequestImpl; // MapLibre's networking module
+
+public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
+    private static OkHttpClient client = null;
+
+    public OkhttpInterceptorReactModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+    }
+
+    @NonNull
+    @Override
+    public String getName() {
+        return "OkhttpInterceptor";
+    }
+
+    @ReactMethod
+    public void initializeInterceptor(Promise promise) {
+        try {
+            if (client == null) {
+                ReactApplicationContext context = getReactApplicationContext();
+                if (context == null) {
+                    promise.reject("INIT_ERROR", "React Context is null");
+                    return;
+                }
+
+                client = new OkHttpClient.Builder()
+                        .addInterceptor(new OkhttpInterceptor(context))
+                        .build();
+                
+                // **Apply the custom OkHttpClient to MapLibre**
+                HttpRequestImpl.setOkHttpClient(client);
+            }
+            promise.resolve("Interceptor initialized successfully");
+        } catch (Exception e) {
+            promise.reject("INIT_ERROR", "Failed to initialize interceptor", e);
+        }
+    }
+
+    public static OkHttpClient getHttpClient() {
+        return client;
+    }
+}
+/*
+//______________________________
 import android.content.Context;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -105,7 +164,7 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
         }
     }
 }
-
+*/
 
 /**
  * // Method to start the server

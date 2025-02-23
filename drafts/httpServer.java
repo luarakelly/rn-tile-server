@@ -1,5 +1,3 @@
-package at.alwinschuster.HttpServer;
-
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.NanoHTTPD.Response.Status;
 
