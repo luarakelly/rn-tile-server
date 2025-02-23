@@ -76,6 +76,7 @@ public class OkhttpInterceptor implements Interceptor {
         SQLiteDatabase db = dbHelper.getDatabase();
         if (db != null) {
             byte[] tileData = fetchTileFromDB(db, z, x, y);
+            db.close();
             if (tileData != null) {
                 tileCache.put(cacheKey, tileData); // Store in cache
             }
