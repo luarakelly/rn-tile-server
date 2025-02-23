@@ -66,16 +66,16 @@ import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReadableArray;
+import java.io.File;
+import android.util.Log;
 
 import java.io.IOException;
-
-import android.util.Log;
 
 public class HttpServerModule extends ReactContextBaseJavaModule implements LifecycleEventListener {
     ReactApplicationContext reactContext;
 
     private static final String MODULE_NAME = "HttpServer";
-
+    
     private static int port;
     private static Server server = null;
 
@@ -91,18 +91,28 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
     }
 
     @ReactMethod
+    public void styleJson(String styles) {       
+        if (server != null) {
+            server.setStyleJson(styles);
+            Log.d(MODULE_NAME, "Style JSON received ");
+        } else {
+            Log.e(MODULE_NAME, "Server is not initialized yet");
+        } 
+    }
+    
+    @ReactMethod
     public void start(int port, String bindAddress, String serviceName, Callback callback) {
         Log.d(MODULE_NAME, "Initializing server...");
         this.port = port;
 
-        startServer(bindAddress, callback);
+        startServer(bindAddress, callback);        
     }
 
     @ReactMethod
-    public void stop(Callback callback) {
+    public void stop() {
         Log.d(MODULE_NAME, "Stopping server...");
         // Graceful shutdown process
-        stopServer(callback);
+        stopServer();
     }
 
     @ReactMethod
@@ -127,14 +137,9 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
 
     @Override
     public void onHostDestroy() {
-        stopServer(new Callback() {
-            @Override
-            public void invoke(Object... args) {
-                // Callback for cleanup (if any)
-            }
-        });
+        stopServer();
     }
-
+    
     private void startServer(String bindAddress, Callback callback) {
         if (this.port == 0) {
             callback.invoke("Invalid port number", null);
@@ -153,7 +158,7 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
         }
     }
 
-    private void stopServer(Callback callback) {
+    private void stopServer() {
         if (server != null) {
             server.stop(); // Graceful stop
             server = null; // Nullify server instance after stopping
@@ -189,3 +194,36 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
         }
     }
  */
+
+ /**
+     * private void downloadTiles() {
+        CompletableFuture.runAsync(() -> {
+            try {
+                URL url = new URL("https://www.dropbox.com/scl/fi/7olc36bmmpks3fz6ftyoa/finland-shortbread-1.0.mbtiles?rlkey=1bh9yfcpaol5sruk3sy36x4ut&st=pyz2t7s0&dl=1");
+                Files.copy(url.openStream(), Paths.get(TILE_FILE_NAME), StandardCopyOption.REPLACE_EXISTING);
+                Log.d(TAG, "Tiles downloaded successfully.");
+            } catch (Exception e) {
+                Log.e(TAG, "Error downloading tiles: " + e.getMessage());
+            } 
+        }, executor);
+    }
+
+    private void downloadTiles(final Runnable onSuccess) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                // Download the tiles file asynchronously
+                URL url = new URL("https://www.dropbox.com/scl/fi/7olc36bmmpks3fz6ftyoa/finland-shortbread-1.0.mbtiles?rlkey=1bh9yfcpaol5sruk3sy36x4ut&st=pyz2t7s0&dl=1");
+                downloadedTilesFile = new File(getReactApplicationContext().getFilesDir(), "tiles.mbtiles");
+                Files.copy(url.openStream(), downloadedTilesFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                Log.d(MODULE_NAME, "Tiles downloaded successfully.");
+
+                // Invoke the onSuccess callback once the tiles are downloaded
+                onSuccess.run();
+            } catch (Exception e) {
+                Log.e(MODULE_NAME, "Error downloading tiles: " + e.getMessage());
+                // If there was an error, notify with a failure
+                onSuccess.run();
+            }
+        });
+    }
+     */

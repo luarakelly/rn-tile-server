@@ -3,18 +3,18 @@ import fi.iki.elonen.NanoHTTPD.Response.Status;
 
 import com.facebook.react.bridge.ReactContext;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+//import java.io.BufferedReader;
+//import java.io.InputStreamReader;
+//import java.net.URL;
+//import java.nio.file.Files;
+//import java.nio.file.Paths;
+//import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -29,54 +29,38 @@ import java.util.zip.GZIPInputStream;
 import android.util.Log;
 
 public class Server extends NanoHTTPD {
+    private ReactContext reactContext;
+    private Map<String, byte[]> tileCache;
+    private File tilesFile;  // Variable to store the tile mbfile
+    private String styleJson;  // Variable to hold the style JSON
+    private Thread cleanupThread; 
+    private static String LOCAL_STORAGE_PATH;
+
     private static final String TAG = "HttpServer";
-    private static final String TILE_FILE_NAME = "tiles.mbtiles";
-    private static final String STYLES_FILE_NAME = "styles.json";
     private static final String TILE_CACHE_DIR = "tile_cache";
     private static final int MAX_CACHE_SIZE = 100;
     private static final long CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
-
-    private ReactContext reactContext;
-    private String bindAddress;
-    private int port;
-
-    private Map<String, byte[]> tileCache;
-    private File tilesFile;
-
-    private Thread cleanupThread; // Thread for cleanup
+    private static final String TILE_FILE_NAME = "tiles.mbtiles";
 
     // Executor for handling asynchronous tasks
     private final ExecutorService executor = Executors.newFixedThreadPool(4); // newFixedThreadPool(4) Limit the thread pool size
 
-    public Server(ReactContext context, int port, String bindAddress) {
-        super(bindAddress != null ? bindAddress : "0.0.0.0", port > 0 ? port : 8080);
+    public Server(ReactContext context, int port, String bindAddress) { 
+        super(bindAddress != null ? bindAddress : "0.0.0.0", port);
 
-        this.reactContext = context;
-        this.port = port;
-        this.bindAddress = bindAddress != null ? bindAddress : "0.0.0.0";  // Default to 127.0.0.1 if not provided
-        
+        reactContext = context;        
         tileCache = new LRUCache<String, byte[]>(MAX_CACHE_SIZE);
-        tilesFile = new File(TILE_FILE_NAME);
-
+        LOCAL_STORAGE_PATH = reactContext.getFilesDir().getAbsolutePath() + "/map-assets/" ;
+        tilesFile = new File(LOCAL_STORAGE_PATH + TILE_FILE_NAME);
         Log.d(TAG, "Server started");
 
         if (!tilesFile.exists()) {
-            downloadTiles();
+            Log.e(TAG, "MBTiles file path is missing!");
         }
-
         scheduleCleanup();
     }
-   
-    private void downloadTiles() {
-        CompletableFuture.runAsync(() -> {
-            try {
-                URL url = new URL("https://www.dropbox.com/scl/fi/7olc36bmmpks3fz6ftyoa/finland-shortbread-1.0.mbtiles?rlkey=1bh9yfcpaol5sruk3sy36x4ut&st=pyz2t7s0&dl=1");
-                Files.copy(url.openStream(), Paths.get(TILE_FILE_NAME), StandardCopyOption.REPLACE_EXISTING);
-                Log.d(TAG, "Tiles downloaded successfully.");
-            } catch (Exception e) {
-                Log.e(TAG, "Error downloading tiles: " + e.getMessage());
-            }
-        }, executor);
+    public void setStyleJson(String styles) {
+        styleJson = styles;
     }
 
     private void scheduleCleanup() {
@@ -110,37 +94,51 @@ public class Server extends NanoHTTPD {
     @Override
     public Response serve(IHTTPSession session) {
         String uri = session.getUri();
+        Log.d(TAG, "Request received!" + uri);
 
         if (uri.equals("/")) {
             return newFixedLengthResponse("Server is running!");
-        } else if (uri.matches("/tile/\\d+/\\d+/\\d+")) {
-            return handleTileRequest(uri);
+        } else if (uri.matches("/tile/\\d+/\\d+/\\d+\\.pbf")) {
+            // Asynchronously handle the tile request
+            CompletableFuture<Response> futureResponse = handleTileRequest(uri);
+            // Return a placeholder response until the async task completes
+            return newFixedLengthResponse("Processing request... Please wait.");
         } else if (uri.equals("/style.json")) {
-            return handleStyleRequest();
+            return newFixedLengthResponse(Status.OK, "application/json", styleJson); // Return the current styleJson
         } else {
-            return newFixedLengthResponse(Status.NOT_FOUND, MIME_PLAINTEXT, "Not Found");
+            return newFixedLengthResponse(Status.NOT_FOUND, MIME_PLAINTEXT, "End-point Not Found");
         }
     }
 
-    private Response handleTileRequest(String tileRequest) {
+    private CompletableFuture<Response> handleTileRequest(String tileRequest) {
+        // Use CompletableFuture to handle the request asynchronously
         return CompletableFuture.supplyAsync(() -> {
             byte[] tileData = tileCache.get(tileRequest);
+            // If not found in cache, attempt to fetch the tile
             if (tileData == null) {
-                tileData = getTileData(tileRequest);
-                if (tileData != null) {
-                    tileCache.put(tileRequest, tileData);
+                Log.d("Tile not found in cache for request: {}", tileRequest);
+                try {
+                    tileData = getTileData(tileRequest);
+                    if (tileData != null) {
+                        tileCache.put(tileRequest, tileData); // Cache the tile data for future requests
+                    }
+                } catch (Exception e) {
+                    Log.e("Error fetching tile data for request: {}", tileRequest, e);
+                    return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error fetching tile data");
                 }
             }
             if (tileData != null) {
                 return newFixedLengthResponse(Status.OK, "application/x-protobuf", new ByteArrayInputStream(tileData), tileData.length);
             } else {
+                // Tile not found, return 404
+                Log.w("Tile not found for request: {}", tileRequest);
                 return newFixedLengthResponse(Status.NOT_FOUND, MIME_PLAINTEXT, "Tile not found");
             }
-        }, executor).join();  // Non-blocking, returns the response once the task is complete
+        }, executor); // Non-blocking, returns the response once the task is complete
     }
 
     private byte[] getTileData(String tileRequest) {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + TILE_FILE_NAME)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + tilesFile)) {
             String[] parts = tileRequest.split("/");
             if (parts.length < 4) return null;
 
@@ -184,32 +182,6 @@ public class Server extends NanoHTTPD {
         return null;
     }
 
-    private Response handleStyleRequest() {
-    return CompletableFuture.supplyAsync(() -> {
-        try {
-            // Open the file from assets
-            InputStream is = reactContext.getAssets().open("tile-assets/style.json");
-            BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-            
-            // Read into a StringBuilder for efficiency
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line);
-            }
-            reader.close();
-
-            String stylesJson = sb.toString();
-            
-            // Return JSON response
-            return newFixedLengthResponse(Status.OK, "application/json", stylesJson);
-        } catch (IOException e) {
-            Log.e(TAG, "Error reading style.json: " + e.getMessage());
-            return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error reading style.json");
-        }
-    }, executor).join();
-}
-
     public void stop() {
         // Graceful shutdown logic
         if (cleanupThread != null) {
@@ -236,6 +208,32 @@ public class Server extends NanoHTTPD {
 }
 
 /**
+ * private Response handleStyleRequest() {
+    return CompletableFuture.supplyAsync(() -> {
+        try {
+            // Open the file from assets
+            InputStream is = reactContext.getAssets().open("tile-assets/style.json");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+            
+            // Read into a StringBuilder for efficiency
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            reader.close();
+
+            String stylesJson = sb.toString();
+            
+            // Return JSON response
+            return newFixedLengthResponse(Status.OK, "application/json", stylesJson);
+        } catch (IOException e) {
+            Log.e(TAG, "Error reading style.json: " + e.getMessage());
+            return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Error reading style.json");
+        }
+    }, executor).join();
+}
+ * _________________________________________
  * private void scheduleCleanup() {
         executor.submit(() -> {
             while (!Thread.interrupted()) {

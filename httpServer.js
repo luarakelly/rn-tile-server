@@ -23,6 +23,10 @@ module.exports = {
 
   stop: () => {
     Server.stop();
+  },
+
+  styleJson: (style) => {
+    Server.styleJson(style);
   }
 };
 
