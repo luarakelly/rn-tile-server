@@ -3,14 +3,21 @@ package at.LuaraSilva.OkhttpInterceptor;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 import androidx.annotation.NonNull;
+import android.util.LruCache;
+
 import okhttp3.*;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import android.util.LruCache;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.zip.GZIPInputStream;
 
 public class OkhttpInterceptor implements Interceptor {
     private static final String TAG = "OkhttpInterceptor";
@@ -64,8 +71,9 @@ public class OkhttpInterceptor implements Interceptor {
             return cachedTile;
         }
 
-        // Get tile from SQLite database
-        SQLiteDatabase db = MBTilesDatabaseHelper.getDatabase(context, mbtilesFileName);
+        // Get tile from SQLite database (Thread-safe)
+        MBTilesDatabaseHelper dbHelper = MBTilesDatabaseHelper.getInstance(context, mbtilesFileName);
+        SQLiteDatabase db = dbHelper.getDatabase();
         if (db != null) {
             byte[] tileData = fetchTileFromDB(db, z, x, y);
             if (tileData != null) {
@@ -89,7 +97,49 @@ public class OkhttpInterceptor implements Interceptor {
             tileData = cursor.getBlob(0);
         }
         cursor.close();
+
+        // If tile data is found, check if it's compressed and decompress if needed
+        if (tileData != null && isGzipCompressed(tileData)) {
+            try {
+                tileData = decompressGzip(tileData);
+            } catch (IOException e) {
+                Log.e("OkhttpInterceptor", "Failed to decompress GZIP tile", e);
+            }
+        }
+
         return tileData;
+    }
+
+    /**
+    * Checks if the byte array is GZIP compressed.
+    */
+    private boolean isGzipCompressed(byte[] data) {
+        if (data.length < 2) {
+            return false;
+        }
+        // GZIP signature: first two bytes should be 0x1F and 0x8B
+        return (data[0] == (byte) 0x1F) && (data[1] == (byte) 0x8B);
+    }
+
+    /**
+    * Decompresses a GZIP-compressed byte array.
+    */
+    private byte[] decompressGzip(byte[] compressedData) throws IOException {
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(compressedData);
+        GZIPInputStream gzipInputStream = new GZIPInputStream(byteArrayInputStream);
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+        byte[] buffer = new byte[4096];
+        int bytesRead;
+        while ((bytesRead = gzipInputStream.read(buffer)) != -1) {
+            byteArrayOutputStream.write(buffer, 0, bytesRead);
+        }
+
+        gzipInputStream.close();
+        byteArrayInputStream.close();
+        byteArrayOutputStream.close();
+
+        return byteArrayOutputStream.toByteArray();
     }
 
     private Response createResponse(Request request, byte[] tileData) {
@@ -113,6 +163,48 @@ public class OkhttpInterceptor implements Interceptor {
     }
 }
 
+public class MBTilesDatabaseHelper extends SQLiteOpenHelper {
+    private static final String TAG = "MBTilesDatabaseHelper";
+    private static final int DATABASE_VERSION = 1;
+    private static MBTilesDatabaseHelper instance;
+    private final String dbPath;
+
+    private MBTilesDatabaseHelper(Context context, String mbtilesFileName) {
+        super(context, null, null, DATABASE_VERSION);
+        this.dbPath = new File(context.getFilesDir(), mbtilesFileName).getAbsolutePath();
+    }
+
+    public static synchronized MBTilesDatabaseHelper getInstance(Context context, String mbtilesFileName) {
+        if (instance == null || !instance.dbPath.equals(new File(context.getFilesDir(), mbtilesFileName).getAbsolutePath())) {
+            instance = new MBTilesDatabaseHelper(context, mbtilesFileName);
+        }
+        return instance;
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db) {
+        // No creation needed since MBTiles is a pre-existing database
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        // No upgrades needed
+    }
+
+    public synchronized SQLiteDatabase getDatabase() {
+        return SQLiteDatabase.openDatabase(dbPath, null, SQLiteDatabase.OPEN_READONLY);
+    }
+}
+
+
+/*
+✅ Singleton Database Connection (reuses a single SQLiteDatabase instance).
+✅ LRU Cache for Tiles (minimizes redundant database queries).
+✅ Tile Fetching in a Background Thread (executor.execute(...) can be used in async implementations).
+✅ Efficient SQLite Queries (avoids unnecessary lookups).
+✅ Proper Database Resource Handling (cursor.close(), database.close()).
+
+
 class MBTilesDatabaseHelper {
     private static SQLiteDatabase database = null;
 
@@ -125,6 +217,7 @@ class MBTilesDatabaseHelper {
                 Log.e("MBTilesDatabaseHelper", "Database file not found: " + mbtiles.getAbsolutePath());
             }
         }
+        
         return database;
     }
 
@@ -135,12 +228,5 @@ class MBTilesDatabaseHelper {
         }
     }
 }
-
-/*
-✅ Singleton Database Connection (reuses a single SQLiteDatabase instance).
-✅ LRU Cache for Tiles (minimizes redundant database queries).
-✅ Tile Fetching in a Background Thread (executor.execute(...) can be used in async implementations).
-✅ Efficient SQLite Queries (avoids unnecessary lookups).
-✅ Proper Database Resource Handling (cursor.close(), database.close()).
  */
 //__________________________________
