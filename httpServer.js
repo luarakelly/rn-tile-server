@@ -1,23 +1,23 @@
 "use strict";
 
 // httpServer.js
+import { NativeModules } from "react-native";
+const OkhttpInterceptor = NativeModules.HttpServer;
 
-import { OkhttpInterceptor } from "react-native"; // Import from NativeModules
-
-class HttpServer {
-  constructor() {
-    this.mapRef = null; // This will hold the reference to MapView
-  }
+const HttpServer = {
+  mapRef: null, // This will hold the reference to MapView
 
   // Initialize the interceptor and handle map reference
-  initializeInterceptor = () => {
+  initializeInterceptor: () => {
     return new Promise((resolve, reject) => {
       OkhttpInterceptor.initializeInterceptor()
         .then(() => {
           console.log("Interceptor initialized");
 
           // Inject the MapView reference into the OkhttpInterceptor for future requests
-          OkhttpInterceptor.setMapView(this.mapRef);
+          if (HttpServer.mapRef) {
+            OkhttpInterceptor.setMapView(HttpServer.mapRef);
+          }
 
           resolve("Interceptor initialized successfully");
         })
@@ -26,19 +26,19 @@ class HttpServer {
           reject("Interceptor initialization failed");
         });
     });
-  };
+  },
 
   // Set the MapView reference (if needed for dynamic updates)
-  setMapView = (mapViewRef) => {
-    this.mapRef = mapViewRef;
-    OkhttpInterceptor.setMapView(this.mapRef); // Inject into the OkhttpInterceptor
-  };
+  setMapView: (mapViewRef) => {
+    HttpServer.mapRef = mapViewRef;
+    OkhttpInterceptor.setMapView(HttpServer.mapRef); // Inject into the OkhttpInterceptor
+  },
 
   // Cleanup or stop the interceptor and map reference
-  cleanupInterceptor = () => {
+  cleanupInterceptor: () => {
     // Clear map reference
-    if (this.mapRef) {
-      this.mapRef = null;
+    if (HttpServer.mapRef) {
+      HttpServer.mapRef = null;
       console.log("MapView reference cleared.");
     }
 
@@ -50,17 +50,17 @@ class HttpServer {
       .catch((error) => {
         console.error("Interceptor cleanup failed:", error);
       });
-  };
+  },
 
   // Optionally, other methods to handle server shutdown can go here
-  stopServer = () => {
+  stopServer: () => {
     // Perform additional server stopping tasks (e.g., stopping background tasks)
     console.log("Server stopped.");
-  };
-}
+  },
+};
 
-// Singleton instance of HttpServer to use across the app
-export default new HttpServer();
+// Exporting the module so you can access it easily
+export default HttpServer;
 
 /*
 import { NativeModules } from "react-native";
