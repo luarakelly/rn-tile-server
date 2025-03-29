@@ -14,14 +14,18 @@ import okhttp3.Request;
 import okhttp3.Interceptor;
 import okhttp3.Response;
 
+//import org.maplibre.gl.android.maps.MapView;
+//import com.maplibre.maps.MapView;
 import org.maplibre.android.maps.MapView;
-import org.maplibre.android.maps.Mapbox;
+//import org.maplibre.android.MapLibre;
+//import org.maplibre.android.maps.Mapbox;
 
 import java.io.IOException;
 
 // import org.maplibre.gl.module.http.HttpRequestImpl; // MapLibre's networking module // got a problem with this import
 
 public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
+    private MapView mapView;  // Declare the mapView instance variable
     private static OkHttpClient client = null;
 
     public OkhttpInterceptorReactModule(ReactApplicationContext reactContext) {
@@ -66,9 +70,9 @@ public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
+    // // Set the MapView reference from JavaScript to inject the OkHttpClient later
     public void setMapView(MapView mapViewInstance) {
-        // Set the MapView instance to inject the OkHttpClient later
-        mapView = mapViewInstance;
+        this.mapView = mapViewInstance;
     }
     
     public static OkHttpClient getHttpClient() {
