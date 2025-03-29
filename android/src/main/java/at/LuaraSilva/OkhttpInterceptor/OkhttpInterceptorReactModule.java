@@ -9,13 +9,17 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Promise;
 
 import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
 import okhttp3.Request;
 import okhttp3.Interceptor;
 import okhttp3.Response;
 
+import org.maplibre.android.maps.MapView;
+import org.maplibre.android.maps.Mapbox;
+
 import java.io.IOException;
 
-import org.maplibre.gl.module.http.HttpRequestImpl; // MapLibre's networking module
+// import org.maplibre.gl.module.http.HttpRequestImpl; // MapLibre's networking module // got a problem with this import
 
 public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
     private static OkHttpClient client = null;
@@ -33,19 +37,27 @@ public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void initializeInterceptor(Promise promise) {
         try {
+            // Check if the client is already initialized
             if (client == null) {
                 ReactApplicationContext context = getReactApplicationContext();
                 if (context == null) {
                     promise.reject("INIT_ERROR", "React Context is null");
                     return;
                 }
-
+                // Initialize OkHttpClient with custom interceptor
                 client = new OkHttpClient.Builder()
                         .addInterceptor(new OkhttpInterceptor(context))
                         .build();
                 
                 // **Apply the custom OkHttpClient to MapLibre**
-                HttpRequestImpl.setOkHttpClient(client);
+                // HttpRequestImpl.setOkHttpClient(client);
+                //you can intercept HTTP requests by configuring your own OkHttpClient and ensuring MapLibre uses it.
+                //If you're using a version of MapLibre that doesn’t have the required classes, you can try using MapLibre's MapView or Mapbox for integrating custom interceptors by providing your OkHttpClient.
+
+                // MapLibre React Native uses MapView, so ensure you're using the custom client
+                if (mapView != null) {
+                    mapView.setOkHttpClient(client); // MapLibre React Native does not have this by default
+                }
             }
             promise.resolve("Interceptor initialized successfully");
         } catch (Exception e) {
@@ -53,6 +65,12 @@ public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
         }
     }
 
+    @ReactMethod
+    public void setMapView(MapView mapViewInstance) {
+        // Set the MapView instance to inject the OkHttpClient later
+        mapView = mapViewInstance;
+    }
+    
     public static OkHttpClient getHttpClient() {
         return client;
     }
