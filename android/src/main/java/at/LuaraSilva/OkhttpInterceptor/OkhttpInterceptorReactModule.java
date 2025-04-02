@@ -14,18 +14,13 @@ import okhttp3.Request;
 import okhttp3.Interceptor;
 import okhttp3.Response;
 
-//import org.maplibre.gl.android.maps.MapView;
-//import com.maplibre.maps.MapView;
-import org.maplibre.android.maps.MapView;
-//import org.maplibre.android.MapLibre;
-//import org.maplibre.android.maps.Mapbox;
+import org.maplibre.android.module.http.HttpRequestUtil;
 
 import java.io.IOException;
 
 // import org.maplibre.gl.module.http.HttpRequestImpl; // MapLibre's networking module // got a problem with this import
 
 public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
-    private MapView mapView;  // Declare the mapView instance variable
     private static OkHttpClient client = null;
 
     public OkhttpInterceptorReactModule(ReactApplicationContext reactContext) {
@@ -48,31 +43,19 @@ public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
                     promise.reject("INIT_ERROR", "React Context is null");
                     return;
                 }
-                // Initialize OkHttpClient with custom interceptor
+
+                // Initialize OkHttpClient with interceptor
                 client = new OkHttpClient.Builder()
-                        .addInterceptor(new OkhttpInterceptor(context))
-                        .build();
+                    .addInterceptor(new OkhttpInterceptor(context)) // Your interceptor
+                    .build();
                 
                 // **Apply the custom OkHttpClient to MapLibre**
-                // HttpRequestImpl.setOkHttpClient(client);
-                //you can intercept HTTP requests by configuring your own OkHttpClient and ensuring MapLibre uses it.
-                //If you're using a version of MapLibre that doesn’t have the required classes, you can try using MapLibre's MapView or Mapbox for integrating custom interceptors by providing your OkHttpClient.
-
-                // MapLibre React Native uses MapView, so ensure you're using the custom client
-                if (mapView != null) {
-                    mapView.setOkHttpClient(client); // MapLibre React Native does not have this by default
-                }
+                HttpRequestUtil.setOkHttpClient(client);
             }
             promise.resolve("Interceptor initialized successfully");
         } catch (Exception e) {
             promise.reject("INIT_ERROR", "Failed to initialize interceptor", e);
         }
-    }
-
-    @ReactMethod
-    // // Set the MapView reference from JavaScript to inject the OkHttpClient later
-    public void setMapView(MapView mapViewInstance) {
-        this.mapView = mapViewInstance;
     }
     
     public static OkHttpClient getHttpClient() {
@@ -80,6 +63,11 @@ public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
     }
 }
 /*
+@ReactMethod
+    // // Set the MapView reference from JavaScript to inject the OkHttpClient later
+    public void setMapView(MapView mapViewInstance) {
+        this.mapView = mapViewInstance;
+    }
 //______________________________
 import android.content.Context;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -249,3 +237,13 @@ public class HttpServerModule extends ReactContextBaseJavaModule implements Life
         });
     }
      */
+
+     /**
+      * Interceptor Configuration: You're creating a custom OkHttpInterceptor to intercept HTTP requests, which is great! However, MapLibre doesn't directly expose an API to set a custom OkHttpClient globally (at least not in the public API). So, you need to find a way to configure MapLibre’s networking to use your custom OkHttpClient.
+
+Interceptor on Tile Requests: Your interceptor works well in intercepting .pbf tile requests and checking for data in your cache or database. This part is correct.
+
+Global OkHttpClient Usage: Since MapLibre doesn’t have direct support to inject the OkHttpClient into its networking stack, the goal is to apply your interceptor globally for all network calls. This could mean setting up a global HTTP client that’s used by all the libraries in your app (including MapLibre).
+
+MapLibre Tile Fetching: As of now, MapLibre doesn't directly expose a way to inject an OkHttpClient into its MapView for fetching tiles. But we can configure network requests globally in Android.
+      */
