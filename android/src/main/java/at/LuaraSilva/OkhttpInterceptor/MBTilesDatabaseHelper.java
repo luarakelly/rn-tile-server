@@ -13,15 +13,35 @@ public class MBTilesDatabaseHelper extends SQLiteOpenHelper {
     private static MBTilesDatabaseHelper instance;
     private final String dbPath;
 
-    private MBTilesDatabaseHelper(Context context, String mbtilesFileName) {
+    private MBTilesDatabaseHelper(Context context, String mbtilesFolderName, String mbtilesFileName) {
         super(context, null, null, DATABASE_VERSION);
-        this.dbPath = new File(context.getFilesDir(), mbtilesFileName).getAbsolutePath();
+        // Use both the folder and file to construct the path
+        File mbtilesFolder = new File(context.getFilesDir(), mbtilesFolderName);
+        if (!mbtilesFolder.exists()) {
+            mbtilesFolder.mkdirs(); // Ensure folder exists
+        }
+        this.dbPath = new File(mbtilesFolder, mbtilesFileName).getAbsolutePath();
+        // this.dbPath = new File(context.getFilesDir(),
+        // mbtilesFileName).getAbsolutePath();
     }
 
-    public static synchronized MBTilesDatabaseHelper getInstance(Context context, String mbtilesFileName) {
-        if (instance == null || !instance.dbPath.equals(new File(context.getFilesDir(), mbtilesFileName).getAbsolutePath())) {
-            instance = new MBTilesDatabaseHelper(context, mbtilesFileName);
+    public static synchronized MBTilesDatabaseHelper getInstance(Context context, String mbtilesFolderName,
+            String mbtilesFileName) {
+        // Construct the full path using both the folder and the file name
+        File mbtilesFolder = new File(context.getFilesDir(), mbtilesFolderName);
+        File mbtilesFile = new File(mbtilesFolder, mbtilesFileName);
+
+        if (instance == null
+                || !instance.dbPath.equals(mbtilesFile.getAbsolutePath())) {
+            instance = new MBTilesDatabaseHelper(context, mbtilesFolderName, mbtilesFileName);
         }
+        /*
+         * if (instance == null
+         * || !instance.dbPath.equals(new File(context.getFilesDir(),
+         * mbtilesFileName).getAbsolutePath())) {
+         * instance = new MBTilesDatabaseHelper(context, mbtilesFileName);
+         * }
+         */
         return instance;
     }
 
@@ -39,4 +59,3 @@ public class MBTilesDatabaseHelper extends SQLiteOpenHelper {
         return SQLiteDatabase.openDatabase(dbPath, null, SQLiteDatabase.OPEN_READONLY);
     }
 }
-

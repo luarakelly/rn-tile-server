@@ -1,4 +1,5 @@
 package at.LuaraSilva.OkhttpInterceptor;
+
 // Import the MBTilesDatabaseHelper class
 import at.LuaraSilva.OkhttpInterceptor.MBTilesDatabaseHelper;
 
@@ -26,9 +27,9 @@ public class OkhttpInterceptor implements Interceptor {
     private static final int CACHE_SIZE = 100; // LRU Cache Size for Tiles
     private static final LruCache<String, byte[]> tileCache = new LruCache<>(CACHE_SIZE);
     private static final ExecutorService executor = Executors.newCachedThreadPool();
-    
+
     private final Context context;
-    
+
     public OkhttpInterceptor(Context context) {
         this.context = context;
     }
@@ -45,8 +46,8 @@ public class OkhttpInterceptor implements Interceptor {
             if (parts.length < 5) {
                 return createErrorResponse(request, 400, "Invalid tile URL format");
             }
-            String mbtilesFolderName = parts[parts.length - 5]; 
-            String mbtilesFileName = parts[parts.length - 4]; 
+            String mbtilesFolderName = parts[parts.length - 5];
+            String mbtilesFileName = parts[parts.length - 4];
             int z = Integer.parseInt(parts[parts.length - 3]);
             int x = Integer.parseInt(parts[parts.length - 2]);
             int y = Integer.parseInt(parts[parts.length - 1].replace(".pbf", ""));
@@ -67,7 +68,7 @@ public class OkhttpInterceptor implements Interceptor {
 
     private byte[] getTileData(String mbtilesFolderName, String mbtilesFileName, int z, int x, int y) {
         String cacheKey = mbtilesFileName + "_" + z + "_" + x + "_" + y;
-        
+
         // Check LRU Cache first
         byte[] cachedTile = tileCache.get(cacheKey);
         if (cachedTile != null) {
@@ -75,7 +76,7 @@ public class OkhttpInterceptor implements Interceptor {
         }
 
         // Get tile from SQLite database (Thread-safe)
-        MBTilesDatabaseHelper dbHelper = MBTilesDatabaseHelper.getInstance(context, mbtilesFolderName + '/' + mbtilesFileName);
+        MBTilesDatabaseHelper dbHelper = MBTilesDatabaseHelper.getInstance(context, mbtilesFolderName, mbtilesFileName);
         SQLiteDatabase db = dbHelper.getDatabase();
         if (db != null) {
             byte[] tileData = fetchTileFromDB(db, z, x, y);
@@ -93,8 +94,7 @@ public class OkhttpInterceptor implements Interceptor {
         int tmsY = (1 << z) - 1 - y; // Convert XYZ to TMS
         Cursor cursor = db.rawQuery(
                 "SELECT tile_data FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?",
-                new String[]{String.valueOf(z), String.valueOf(x), String.valueOf(tmsY)}
-        );
+                new String[] { String.valueOf(z), String.valueOf(x), String.valueOf(tmsY) });
 
         byte[] tileData = null;
         if (cursor.moveToFirst()) {
@@ -115,8 +115,8 @@ public class OkhttpInterceptor implements Interceptor {
     }
 
     /**
-    * Checks if the byte array is GZIP compressed.
-    */
+     * Checks if the byte array is GZIP compressed.
+     */
     private boolean isGzipCompressed(byte[] data) {
         if (data.length < 2) {
             return false;
@@ -126,8 +126,8 @@ public class OkhttpInterceptor implements Interceptor {
     }
 
     /**
-    * Decompresses a GZIP-compressed byte array.
-    */
+     * Decompresses a GZIP-compressed byte array.
+     */
     private byte[] decompressGzip(byte[] compressedData) throws IOException {
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(compressedData);
         GZIPInputStream gzipInputStream = new GZIPInputStream(byteArrayInputStream);
