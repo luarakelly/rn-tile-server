@@ -1,9 +1,11 @@
 package at.LuaraSilva.OkhttpInterceptor;
+//package at.LuaraSilva.OkhttpInterceptor.OkhttpInterceptorReactModule;
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.uimanager.ViewManager;
+//import com.facebook.react.shell.MainReactPackage;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -16,6 +18,15 @@ public class OkhttpInterceptorReactPackage implements ReactPackage {
         modules.add(new OkhttpInterceptorReactModule(reactContext));
         return modules;
     }
+/*
+ * @Override
+protected List<ReactPackage> getPackages() {
+    return Arrays.<ReactPackage>asList(
+        new MainReactPackage(),  // This registers the default packages
+        new OkhttpInterceptorReactPackage()  // This registers your custom package
+    );
+}
+ */
 
     @Override
     public List<ViewManager> createViewManagers(ReactApplicationContext reactContext) {
@@ -24,7 +35,12 @@ public class OkhttpInterceptorReactPackage implements ReactPackage {
 }
 
 
-/*____________________________________________
+/*_________
+Maybe for manifest.xml
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+
+___________________________________
 
 import java.util.ArrayList;
 import java.util.Collections;

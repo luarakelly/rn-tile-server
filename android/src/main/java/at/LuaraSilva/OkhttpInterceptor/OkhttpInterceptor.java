@@ -42,16 +42,17 @@ public class OkhttpInterceptor implements Interceptor {
         if (url.endsWith(".pbf")) {
             Log.d(TAG, "Intercepting tile request: " + url);
             String[] parts = url.split("/");
-            if (parts.length < 4) {
+            if (parts.length < 5) {
                 return createErrorResponse(request, 400, "Invalid tile URL format");
             }
+            String mbtilesFolderName = parts[parts.length - 5]; 
             String mbtilesFileName = parts[parts.length - 4]; 
             int z = Integer.parseInt(parts[parts.length - 3]);
             int x = Integer.parseInt(parts[parts.length - 2]);
             int y = Integer.parseInt(parts[parts.length - 1].replace(".pbf", ""));
 
             // Fetch tile data from cache or database
-            byte[] tileData = getTileData(mbtilesFileName, z, x, y);
+            byte[] tileData = getTileData(mbtilesFolderName, mbtilesFileName, z, x, y);
             if (tileData != null) {
                 return createResponse(request, tileData);
             } else {
@@ -64,7 +65,7 @@ public class OkhttpInterceptor implements Interceptor {
         return chain.proceed(request);
     }
 
-    private byte[] getTileData(String mbtilesFileName, int z, int x, int y) {
+    private byte[] getTileData(String mbtilesFolderName, String mbtilesFileName, int z, int x, int y) {
         String cacheKey = mbtilesFileName + "_" + z + "_" + x + "_" + y;
         
         // Check LRU Cache first
@@ -74,7 +75,7 @@ public class OkhttpInterceptor implements Interceptor {
         }
 
         // Get tile from SQLite database (Thread-safe)
-        MBTilesDatabaseHelper dbHelper = MBTilesDatabaseHelper.getInstance(context, mbtilesFileName);
+        MBTilesDatabaseHelper dbHelper = MBTilesDatabaseHelper.getInstance(context, mbtilesFolderName + '/' + mbtilesFileName);
         SQLiteDatabase db = dbHelper.getDatabase();
         if (db != null) {
             byte[] tileData = fetchTileFromDB(db, z, x, y);

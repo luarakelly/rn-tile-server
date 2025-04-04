@@ -1,23 +1,16 @@
 "use strict";
 
-// httpServer.js
+// httpServer.js - bridge module (HttpServer) that interfaces with the native module
 import { NativeModules } from "react-native";
-const OkhttpInterceptor = NativeModules.HttpServer;
+const OkhttpInterceptor = NativeModules.OkhttpInterceptor;
 
 const HttpServer = {
-  mapRef: null, // This will hold the reference to MapView
-
   // Initialize the interceptor and handle map reference
   initializeInterceptor: () => {
     return new Promise((resolve, reject) => {
       OkhttpInterceptor.initializeInterceptor()
         .then(() => {
           console.log("Interceptor initialized");
-
-          // Inject the MapView reference into the OkhttpInterceptor for future requests
-          if (HttpServer.mapRef) {
-            OkhttpInterceptor.setMapView(HttpServer.mapRef);
-          }
 
           resolve("Interceptor initialized successfully");
         })
@@ -26,12 +19,6 @@ const HttpServer = {
           reject("Interceptor initialization failed");
         });
     });
-  },
-
-  // Set the MapView reference (if needed for dynamic updates)
-  setMapView: (mapViewRef) => {
-    HttpServer.mapRef = mapViewRef;
-    OkhttpInterceptor.setMapView(HttpServer.mapRef); // Inject into the OkhttpInterceptor
   },
 
   // Cleanup or stop the interceptor and map reference
@@ -53,9 +40,9 @@ const HttpServer = {
   },
 
   // Optionally, other methods to handle server shutdown can go here
-  stopServer: () => {
+  stopInterceptor: () => {
     // Perform additional server stopping tasks (e.g., stopping background tasks)
-    console.log("Server stopped.");
+    console.log("Interceptor stopped.");
   },
 };
 

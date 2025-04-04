@@ -57,6 +57,16 @@ public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
             promise.reject("INIT_ERROR", "Failed to initialize interceptor", e);
         }
     }
+
+    @ReactMethod
+    public void cleanupInterceptor(Promise promise) {
+        try {
+            HttpRequestUtil.setOkHttpClient(null); // Reset to default client
+            promise.resolve("Interceptor cleaned up successfully");
+        } catch (Exception e) {
+            promise.reject("CLEANUP_ERROR", "Failed to clean up interceptor", e);
+        }
+    }
     
     public static OkHttpClient getHttpClient() {
         return client;
