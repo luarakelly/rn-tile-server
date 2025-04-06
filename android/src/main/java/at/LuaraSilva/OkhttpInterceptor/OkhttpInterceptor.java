@@ -46,14 +46,15 @@ public class OkhttpInterceptor implements Interceptor {
             if (parts.length < 5) {
                 return createErrorResponse(request, 400, "Invalid tile URL format");
             }
-            String mbtilesFolderName = parts[parts.length - 5];
-            String mbtilesFileName = parts[parts.length - 4];
-            int z = Integer.parseInt(parts[parts.length - 3]);
-            int x = Integer.parseInt(parts[parts.length - 2]);
-            int y = Integer.parseInt(parts[parts.length - 1].replace(".pbf", ""));
+            String mbtilesFolderName = parts[parts.length - 5];  // "map_assets"
+            String mbtilesFileName = parts[parts.length - 4];   // "tiles.mbtiles"
+            int z = Integer.parseInt(parts[parts.length - 3]);  // {z}
+            int x = Integer.parseInt(parts[parts.length - 2]);  // {x}
+            int y = Integer.parseInt(parts[parts.length - 1].replace(".pbf", ""));  // {y}
 
             // Fetch tile data from cache or database
             byte[] tileData = getTileData(mbtilesFolderName, mbtilesFileName, z, x, y);
+            
             if (tileData != null) {
                 return createResponse(request, tileData);
             } else {

@@ -21,6 +21,7 @@ public class MBTilesDatabaseHelper extends SQLiteOpenHelper {
             mbtilesFolder.mkdirs(); // Ensure folder exists
         }
         this.dbPath = new File(mbtilesFolder, mbtilesFileName).getAbsolutePath();
+        Log.d(TAG, "dbPath: " + dbPath);
         // this.dbPath = new File(context.getFilesDir(),
         // mbtilesFileName).getAbsolutePath();
     }
@@ -30,6 +31,8 @@ public class MBTilesDatabaseHelper extends SQLiteOpenHelper {
         // Construct the full path using both the folder and the file name
         File mbtilesFolder = new File(context.getFilesDir(), mbtilesFolderName);
         File mbtilesFile = new File(mbtilesFolder, mbtilesFileName);
+        Log.d(TAG, "mbtilesFolder: " + mbtilesFolder.getAbsolutePath());
+        Log.d(TAG, "mbtilesFile: " + mbtilesFile.getAbsolutePath());
 
         if (instance == null
                 || !instance.dbPath.equals(mbtilesFile.getAbsolutePath())) {
