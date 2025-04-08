@@ -28,7 +28,7 @@ public class MBTilesDatabaseHelper extends SQLiteOpenHelper {
                                                                   @NonNull String mbtilesFileName) {
         // Construct the full path using both the folder and the file name
         File mbtilesFile = new File(context.getFilesDir(), mbtilesFolderName + "/" + mbtilesFileName);
-        if (!file.exists()) {
+        if (!mbtilesFile.exists()) {
             Log.e(TAG, "MBTiles file does not exist: " + mbtilesFile);
             // Optionally, you can throw an exception or handle the error accordingly
         }
