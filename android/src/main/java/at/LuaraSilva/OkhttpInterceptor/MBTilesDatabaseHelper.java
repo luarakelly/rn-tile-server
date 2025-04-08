@@ -1,11 +1,10 @@
 package at.LuaraSilva.OkhttpInterceptor;
 
 import android.content.Context;
-import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-
 import android.util.Log;
+
 import androidx.annotation.NonNull;
 
 import java.io.File;
@@ -16,38 +15,30 @@ public class MBTilesDatabaseHelper extends SQLiteOpenHelper {
     private static MBTilesDatabaseHelper instance;
     private final String dbPath;
 
-    private MBTilesDatabaseHelper(@NonNull Context context, @NonNull String mbtilesFolderName, @NonNull String mbtilesFileName) {
-        super(context, null, null, DATABASE_VERSION);
-        // Use both the folder and file to construct the path
-        File mbtilesFolder = new File(context.getFilesDir(), mbtilesFolderName);
-        if (!mbtilesFolder.exists()) {
-            mbtilesFolder.mkdirs(); // Ensure folder exists
-        }
-        this.dbPath = new File(mbtilesFolder, mbtilesFileName).getAbsolutePath();
-        Log.d(TAG, "dbPath: " + dbPath);
-        // this.dbPath = new File(context.getFilesDir(),
-        // mbtilesFileName).getAbsolutePath();
+    private MBTilesDatabaseHelper(@NonNull Context context, @NonNull String mbtilesFile) {
+        // Pass a database name since SQLiteOpenHelper expects it
+        super(context, mbtilesFile, null, DATABASE_VERSION);
+
+        // Store the absolute path of the MBTiles file
+        this.dbPath = mbtilesFile;
     }
 
+    // Singleton pattern for getting the instance
     public static synchronized MBTilesDatabaseHelper getInstance(@NonNull Context context, @NonNull String mbtilesFolderName,
-    @NonNull String mbtilesFileName) {
+                                                                  @NonNull String mbtilesFileName) {
         // Construct the full path using both the folder and the file name
-        File mbtilesFolder = new File(context.getFilesDir(), mbtilesFolderName);
-        File mbtilesFile = new File(mbtilesFolder, mbtilesFileName);
-        Log.d(TAG, "mbtilesFolder: " + mbtilesFolder.getAbsolutePath());
-        Log.d(TAG, "mbtilesFile: " + mbtilesFile.getAbsolutePath());
-
-        if (instance == null
-                || !instance.dbPath.equals(mbtilesFile.getAbsolutePath())) {
-            instance = new MBTilesDatabaseHelper(context, mbtilesFolderName, mbtilesFileName);
+        File mbtilesFile = new File(context.getFilesDir(), mbtilesFolderName + "/" + mbtilesFileName);
+        if (!file.exists()) {
+            Log.e(TAG, "MBTiles file does not exist: " + mbtilesFile);
+            // Optionally, you can throw an exception or handle the error accordingly
         }
-        /*
-         * if (instance == null
-         * || !instance.dbPath.equals(new File(context.getFilesDir(),
-         * mbtilesFileName).getAbsolutePath())) {
-         * instance = new MBTilesDatabaseHelper(context, mbtilesFileName);
-         * }
-         */
+        Log.d(TAG, "mbtilesFile path: " + mbtilesFile.getAbsolutePath());
+
+        // Check if the instance already exists and if the path is different
+        if (instance == null || !instance.dbPath.equals(mbtilesFile.getAbsolutePath())) {
+            // If not, create a new instance with the updated file path
+            instance = new MBTilesDatabaseHelper(context, mbtilesFile.getAbsolutePath());
+        }
         return instance;
     }
 
@@ -65,3 +56,4 @@ public class MBTilesDatabaseHelper extends SQLiteOpenHelper {
         return SQLiteDatabase.openDatabase(dbPath, null, SQLiteDatabase.OPEN_READONLY);
     }
 }
+
