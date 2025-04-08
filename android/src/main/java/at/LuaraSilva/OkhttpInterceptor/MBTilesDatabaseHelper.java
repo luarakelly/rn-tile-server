@@ -5,6 +5,9 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+import android.util.Log;
+import androidx.annotation.NonNull;
+
 import java.io.File;
 
 public class MBTilesDatabaseHelper extends SQLiteOpenHelper {
@@ -13,7 +16,7 @@ public class MBTilesDatabaseHelper extends SQLiteOpenHelper {
     private static MBTilesDatabaseHelper instance;
     private final String dbPath;
 
-    private MBTilesDatabaseHelper(Context context, String mbtilesFolderName, String mbtilesFileName) {
+    private MBTilesDatabaseHelper(@NonNull Context context, @NonNull String mbtilesFolderName, @NonNull String mbtilesFileName) {
         super(context, null, null, DATABASE_VERSION);
         // Use both the folder and file to construct the path
         File mbtilesFolder = new File(context.getFilesDir(), mbtilesFolderName);
@@ -26,8 +29,8 @@ public class MBTilesDatabaseHelper extends SQLiteOpenHelper {
         // mbtilesFileName).getAbsolutePath();
     }
 
-    public static synchronized MBTilesDatabaseHelper getInstance(Context context, String mbtilesFolderName,
-            String mbtilesFileName) {
+    public static synchronized MBTilesDatabaseHelper getInstance(@NonNull Context context, @NonNull String mbtilesFolderName,
+    @NonNull String mbtilesFileName) {
         // Construct the full path using both the folder and the file name
         File mbtilesFolder = new File(context.getFilesDir(), mbtilesFolderName);
         File mbtilesFile = new File(mbtilesFolder, mbtilesFileName);
