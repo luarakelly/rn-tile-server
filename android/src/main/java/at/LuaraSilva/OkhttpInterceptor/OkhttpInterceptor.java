@@ -40,7 +40,7 @@ public class OkhttpInterceptor implements Interceptor {
         String url = request.url().toString();
 
         // Intercept only .pbf tile requests
-        if (url.endsWith(".pbf")) {
+        if (url.endsWith(".pbf") && url.contains("/tiles/")) {
             Log.d(TAG, "Intercepting tile request: " + url);
             String[] parts = url.split("/");
             if (parts.length < 5) {
