@@ -38,9 +38,9 @@ public class OkhttpInterceptor implements Interceptor {
     public Response intercept(@NonNull Chain chain) throws IOException {
         Request request = chain.request();
         String url = request.url().toString();
-
+        Log.d(TAG, "Request: " + url);
         // Intercept only .pbf tile requests
-        if (url.matches("http://local/tiles/\\d+/\\d+/\\d+\\.pbf") ) { //url.endsWith(".pbf") && url.contains("/tiles/")
+        if (url.contains("local/tiles/")) { //url.endsWith(".pbf") &&  url.matches("http://local/tiles/\\d+/\\d+/\\d+\\.pbf")
             Log.d(TAG, "Intercepting tile request: " + url);
             String[] parts = url.split("/");
             if (parts.length < 5) {
