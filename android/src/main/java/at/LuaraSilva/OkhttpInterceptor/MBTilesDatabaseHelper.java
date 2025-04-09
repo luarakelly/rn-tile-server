@@ -24,10 +24,9 @@ public class MBTilesDatabaseHelper extends SQLiteOpenHelper {
     }
 
     // Singleton pattern for getting the instance
-    public static synchronized MBTilesDatabaseHelper getInstance(@NonNull Context context, @NonNull String mbtilesFolderName,
-                                                                  @NonNull String mbtilesFileName) {
-        // Construct the full path using both the folder and the file name
-        File mbtilesFile = new File(context.getFilesDir(), mbtilesFolderName + "/" + mbtilesFileName);
+    public static synchronized MBTilesDatabaseHelper getInstance(@NonNull Context context, @NonNull String mbtilesFileName) {
+        // Construct the full path using file name
+        File mbtilesFile = new File(context.getFilesDir(), mbtilesFileName);
         if (!mbtilesFile.exists()) {
             Log.e(TAG, "MBTiles file does not exist: " + mbtilesFile);
             // Optionally, you can throw an exception or handle the error accordingly

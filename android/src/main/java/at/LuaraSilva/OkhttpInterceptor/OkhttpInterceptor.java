@@ -40,20 +40,21 @@ public class OkhttpInterceptor implements Interceptor {
         String url = request.url().toString();
 
         // Intercept only .pbf tile requests
-        if (url.endsWith(".pbf") && url.contains("/tiles/")) {
+        if (url.matches("http://local/tiles/\\d+/\\d+/\\d+\\.pbf") ) { //url.endsWith(".pbf") && url.contains("/tiles/")
             Log.d(TAG, "Intercepting tile request: " + url);
             String[] parts = url.split("/");
             if (parts.length < 5) {
                 return createErrorResponse(request, 400, "Invalid tile URL format");
             }
-            String mbtilesFolderName = parts[parts.length - 5];  // "map_assets"
+            String urlKeyWord = parts[parts.length - 5];  // local
+            Log.d(TAG, "urlKeyWord: " + urlKeyWord);
             String mbtilesFileName = parts[parts.length - 4];   // "tiles.mbtiles"
             int z = Integer.parseInt(parts[parts.length - 3]);  // {z}
             int x = Integer.parseInt(parts[parts.length - 2]);  // {x}
             int y = Integer.parseInt(parts[parts.length - 1].replace(".pbf", ""));  // {y}
 
             // Fetch tile data from cache or database
-            byte[] tileData = getTileData(mbtilesFolderName, mbtilesFileName, z, x, y);
+            byte[] tileData = getTileData(mbtilesFileName, z, x, y);
             
             if (tileData != null) {
                 return createResponse(request, tileData);
@@ -67,7 +68,7 @@ public class OkhttpInterceptor implements Interceptor {
         return chain.proceed(request);
     }
 
-    private byte[] getTileData(String mbtilesFolderName, String mbtilesFileName, int z, int x, int y) {
+    private byte[] getTileData(String mbtilesFileName, int z, int x, int y) {
         String cacheKey = mbtilesFileName + "_" + z + "_" + x + "_" + y;
 
         // Check LRU Cache first
@@ -77,7 +78,7 @@ public class OkhttpInterceptor implements Interceptor {
         }
 
         // Get tile from SQLite database (Thread-safe)
-        MBTilesDatabaseHelper dbHelper = MBTilesDatabaseHelper.getInstance(context, mbtilesFolderName, mbtilesFileName);
+        MBTilesDatabaseHelper dbHelper = MBTilesDatabaseHelper.getInstance(context, mbtilesFileName);
         SQLiteDatabase db = dbHelper.getDatabase();
         if (db != null) {
             byte[] tileData = fetchTileFromDB(db, z, x, y);
