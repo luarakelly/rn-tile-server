@@ -80,8 +80,10 @@ public class OkhttpInterceptor implements Interceptor {
         // Get tile from SQLite database (Thread-safe)
         MBTilesDatabaseHelper dbHelper = MBTilesDatabaseHelper.getInstance(context, mbtilesFileName);
         SQLiteDatabase db = dbHelper.getDatabase();
+        Log.d(TAG, "db: " + db);
         if (db != null) {
             byte[] tileData = fetchTileFromDB(db, z, x, y);
+            Log.d(TAG, "tileData: " + tileData);
             db.close();
             if (tileData != null) {
                 tileCache.put(cacheKey, tileData); // Store in cache
@@ -98,9 +100,14 @@ public class OkhttpInterceptor implements Interceptor {
                 "SELECT tile_data FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?",
                 new String[] { String.valueOf(z), String.valueOf(x), String.valueOf(tmsY) });
 
+        Log.d(TAG, "Fetching tile with SQL query: " + "SELECT tile_data FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?" + " with parameters: " + z + ", " + x + ", " + tmsY);
+            
         byte[] tileData = null;
         if (cursor.moveToFirst()) {
             tileData = cursor.getBlob(0);
+            Log.d(TAG, "Tile data found: " + tileData.length + " bytes");
+        } else {
+            Log.e(TAG, "No tile data found for z=" + z + ", x=" + x + ", tmsY=" + tmsY);
         }
         cursor.close();
 
@@ -108,9 +115,12 @@ public class OkhttpInterceptor implements Interceptor {
         if (tileData != null && isGzipCompressed(tileData)) {
             try {
                 tileData = decompressGzip(tileData);
+                Log.d(TAG, "Tile decompressed successfully");
             } catch (IOException e) {
                 Log.e("OkhttpInterceptor", "Failed to decompress GZIP tile", e);
             }
+        } else {
+            Log.d(TAG, "Tile data is not compressed or already decompressed");
         }
 
         return tileData;

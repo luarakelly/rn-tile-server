@@ -1,0 +1,27 @@
+Intercept requests on iOS too
+Your current solution is Android-only via OkHttp.
+On iOS, MapLibre uses NSURLSession. You’ll need to:
+
+Subclass NSURLProtocol and register it to intercept http://local/\* URLs.
+
+Read the .mbtiles from the app sandbox (likely via SQLite).
+
+Support multiple .mbtiles files
+Right now, you're hardcoding the filename from the URL. That's okay if you always use one file — but for multiple maps, you could structure URLs like:
+
+ruby
+Copy
+http://local/tiles/myfile.mbtiles/{z}/{x}/{y}.pbf
+and parse the filename from there (you’re already partially doing this).
+
+Use tile metadata
+Consider reading metadata from the .mbtiles file to dynamically load:
+
+bounds
+
+minzoom/maxzoom
+
+Available source-layer names
+
+Handle tile expiration / freshness
+If tiles may be updated remotely, you could optionally invalidate the cache or redownload the file.
