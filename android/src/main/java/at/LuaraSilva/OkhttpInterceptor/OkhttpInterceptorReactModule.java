@@ -44,7 +44,7 @@ public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
                     return;
                 }
 
-                // Initialize OkHttpClient with interceptor
+                // Initialize OkHttpClient with Application Interceptor
                 client = new OkHttpClient.Builder()
                     .addInterceptor(new OkhttpInterceptor(context)) // Your interceptor
                     .build();
@@ -62,6 +62,10 @@ public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
     public void cleanupInterceptor(Promise promise) {
         try {
             HttpRequestUtil.setOkHttpClient(null); // Reset to default client
+            // Clean up the cache
+            OkhttpInterceptor.clearTileCache();
+            // Shut down the executor
+            OkhttpInterceptor.shutdownExecutor();
             promise.resolve("Interceptor cleaned up successfully");
         } catch (Exception e) {
             promise.reject("CLEANUP_ERROR", "Failed to clean up interceptor", e);

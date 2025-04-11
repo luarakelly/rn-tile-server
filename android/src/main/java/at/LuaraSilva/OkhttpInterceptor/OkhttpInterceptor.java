@@ -40,7 +40,8 @@ public class OkhttpInterceptor implements Interceptor {
         String url = request.url().toString();
         Log.d(TAG, "Request: " + url);
         // Intercept only .pbf tile requests
-        if (url.contains("local/tiles/")) { //url.endsWith(".pbf") &&  url.matches("http://local/tiles/\\d+/\\d+/\\d+\\.pbf")
+        if (url.contains("local/tiles/")) { //url.endsWith(".pbf") &&  url.matches("http://local/tiles/\\d+/\\d+/\\d+\\.pbf") or if (url.matches(".*local/tiles/\\d+/\\d+/\\d+\\.pbf"))
+
             Log.d(TAG, "Intercepting tile request: " + url);
             String[] parts = url.split("/");
             if (parts.length < 5) {
@@ -57,6 +58,7 @@ public class OkhttpInterceptor implements Interceptor {
             byte[] tileData = getTileData(mbtilesFileName, z, x, y);
             
             if (tileData != null) {
+                Log.d(TAG, "Creating response for request: " + request);
                 return createResponse(request, tileData);
             } else {
                 Log.e(TAG, "Tile not found: " + url);
@@ -176,6 +178,14 @@ public class OkhttpInterceptor implements Interceptor {
                 .body(ResponseBody.create(null, new byte[0]))
                 .protocol(Protocol.HTTP_1_1)
                 .build();
+    }
+
+    public static void clearTileCache() {
+        tileCache.evictAll();
+    }
+    
+    public static void shutdownExecutor() {
+        executor.shutdown();
     }
 }
 
