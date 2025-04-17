@@ -42,7 +42,7 @@ public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
             ReactApplicationContext context = getReactApplicationContext();
 
             // ✅ Validate .mbtiles before setting interceptor
-            boolean isValid = isValidMbtilesFile(context, folderName + "/" + tilesFileName + ".mbtiles");
+            boolean isValid = isValidMbtiles(context, folderName + "/" + tilesFileName + ".mbtiles");
             if (!isValid) {
                 promise.reject("INVALID_FILE", "MBTiles file is invalid or missing required 'tiles' table.");
                 return;
@@ -65,7 +65,7 @@ public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void isValidMbtilesFile(String folderName, String tilesFileName, Promise promise) {
         try {
-            boolean isValid = isValidMbtilesFile(getReactApplicationContext(), folderName + "/" + tilesFileName + ".mbtiles");
+            boolean isValid = isValidMbtiles(getReactApplicationContext(), folderName + "/" + tilesFileName + ".mbtiles");
             promise.resolve(isValid);
         } catch (Exception e) {
             promise.reject("VALIDATION_ERROR", "Failed to validate MBTiles file", e);
@@ -92,7 +92,7 @@ public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
         return client;
     }
 
-    private boolean isValidMbtilesFile(Context context, String fullRelativePath) {
+    private boolean isValidMbtiles(Context context, String fullRelativePath) {
         SQLiteDatabase db = null;
         Cursor cursorTable = null;
         Cursor cursorData = null;
