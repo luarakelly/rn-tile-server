@@ -6,9 +6,9 @@ const OkhttpInterceptor = NativeModules.OkhttpInterceptor;
 
 const HttpServer = {
   // Initialize the interceptor and handle map reference
-  initializeInterceptor: () => {
+  initializeInterceptor: (folder, file) => {
     return new Promise((resolve, reject) => {
-      OkhttpInterceptor.initializeInterceptor()
+      OkhttpInterceptor.initializeInterceptor(folder, file)
         .then(() => {
           console.log("Interceptor initialized");
 
@@ -37,12 +37,6 @@ const HttpServer = {
       .catch((error) => {
         console.error("Interceptor cleanup failed:", error);
       });
-  },
-
-  // Optionally, other methods to handle server shutdown can go here
-  stopInterceptor: () => {
-    // Perform additional server stopping tasks (e.g., stopping background tasks)
-    console.log("Interceptor stopped.");
   },
 };
 
