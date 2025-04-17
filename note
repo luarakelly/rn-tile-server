@@ -25,3 +25,24 @@ Available source-layer names
 
 Handle tile expiration / freshness
 If tiles may be updated remotely, you could optionally invalidate the cache or redownload the file.
+
+---
+
+PRODUCTION IS CRASHING
+
+Verify MBTiles Integrity
+Before using it, run a quick check if the data is not heathy send a message to react native so the it can handle to th user and send to maplibre a 404 response:
+
+kotlin
+Copy
+Edit
+val db = SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY)
+val cursor = db.rawQuery("SELECT name FROM sqlite_master WHERE type='table'", null)
+cursor.use {
+while (it.moveToNext()) {
+Log.d("DB_TABLE", it.getString(0))
+}
+}
+
+Handle Fallback or Retry
+If the tile query fails, MapLibre is currently crashing instead of recovering. Wrap your interceptor logic so that it can gracefully return null or 404 tiles if there's any failure reading from SQLite.

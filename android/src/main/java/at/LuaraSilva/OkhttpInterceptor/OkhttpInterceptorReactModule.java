@@ -2,6 +2,8 @@ package at.LuaraSilva.OkhttpInterceptor;
 
 import android.content.Context;
 import androidx.annotation.NonNull;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.Cursor;
 
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -22,6 +24,7 @@ import java.io.IOException;
 
 public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
     private static OkHttpClient client = null;
+    /* save context as a variable */
 
     public OkhttpInterceptorReactModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -34,24 +37,25 @@ public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void initializeInterceptor(Promise promise) {
+    public void initializeInterceptor(String folderName, String tilesFileName, Promise promise) {
         try {
-            // Check if the client is already initialized
-            if (client == null) {
-                ReactApplicationContext context = getReactApplicationContext();
-                if (context == null) {
-                    promise.reject("INIT_ERROR", "React Context is null");
-                    return;
-                }
+            ReactApplicationContext context = getReactApplicationContext();
 
-                // Initialize OkHttpClient with Application Interceptor
+            // ✅ Validate .mbtiles before setting interceptor
+            boolean isValid = isValidMbtilesFile(context, folderName + "/" + tilesFileName + ".mbtiles");
+            if (!isValid) {
+                promise.reject("INVALID_FILE", "MBTiles file is invalid or missing required 'tiles' table.");
+                return;
+            }
+
+            if (client == null) {
                 client = new OkHttpClient.Builder()
-                    .addInterceptor(new OkhttpInterceptor(context)) // Your interceptor
+                    .addInterceptor(new OkhttpInterceptor(context, folderName, tilesFileName))
                     .build();
-                
-                // **Apply the custom OkHttpClient to MapLibre**
+
                 HttpRequestUtil.setOkHttpClient(client);
             }
+
             promise.resolve("Interceptor initialized successfully");
         } catch (Exception e) {
             promise.reject("INIT_ERROR", "Failed to initialize interceptor", e);
@@ -59,13 +63,25 @@ public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
+    public void isValidMbtilesFile(String folderName, String tilesFileName, Promise promise) {
+        try {
+            boolean isValid = isValidMbtilesFile(getReactApplicationContext(), folderName + "/" + tilesFileName + ".mbtiles");
+            promise.resolve(isValid);
+        } catch (Exception e) {
+            promise.reject("VALIDATION_ERROR", "Failed to validate MBTiles file", e);
+        }
+    }
+
+    @ReactMethod
     public void cleanupInterceptor(Promise promise) {
         try {
             HttpRequestUtil.setOkHttpClient(null); // Reset to default client
-            // Clean up the cache
-            OkhttpInterceptor.clearTileCache();
-            // Shut down the executor
-            OkhttpInterceptor.shutdownExecutor();
+
+            OkhttpInterceptor.clearTileCache(); // Clean tile cache
+            OkhttpInterceptor.shutdownExecutor(); // Shut down executor
+
+            MBTilesDatabaseHelper.closeAll(); // ✅ Close all DBs
+
             promise.resolve("Interceptor cleaned up successfully");
         } catch (Exception e) {
             promise.reject("CLEANUP_ERROR", "Failed to clean up interceptor", e);
@@ -75,7 +91,68 @@ public class OkhttpInterceptorReactModule extends ReactContextBaseJavaModule {
     public static OkHttpClient getHttpClient() {
         return client;
     }
+
+    private boolean isValidMbtilesFile(Context context, String fullRelativePath) {
+        SQLiteDatabase db = null;
+        Cursor cursorTable = null;
+        Cursor cursorData = null;
+    
+        try {
+            File file = new File(context.getFilesDir(), fullRelativePath);
+            if (!file.exists()) {
+                Log.e("Validation", "MBTiles file does not exist: " + file.getAbsolutePath());
+                return false;
+            }
+    
+            if (file.length() < 1024) {
+                Log.e("Validation", "MBTiles file is too small to be valid: " + file.getAbsolutePath());
+                return false;
+            }
+    
+            db = SQLiteDatabase.openDatabase(file.getAbsolutePath(), null, SQLiteDatabase.OPEN_READONLY);
+    
+            cursorTable = db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='tiles'", null);
+            boolean hasTilesTable = cursorTable.moveToFirst();
+            if (!hasTilesTable) {
+                Log.e("Validation", "Tiles table not exists");
+            }
+    
+            cursorData = db.rawQuery("SELECT tile_data FROM tiles LIMIT 1", null);
+            boolean hasTilesData = cursorData.moveToFirst();
+            if (!hasTilesData) {
+                Log.e("Validation", "Tiles table exists but no data");
+            }
+    
+            if (hasTilesTable && hasTilesData) {
+                Log.d("Validation", "MBTiles file is valid: " + file.getAbsolutePath());
+                return true;
+            } else {
+                Log.d("Validation", "MBTiles file is invalid: " + file.getAbsolutePath());
+                return false;
+            }
+    
+        } catch (Exception e) {
+            Log.e("Validation", "Error during MBTiles validation", e);
+            return false;
+        } finally {
+            if (cursorTable != null) cursorTable.close();
+            if (cursorData != null) cursorData.close();
+            if (db != null && db.isOpen()) db.close();
+        }
+    }    
 }
+
+/**
+✅ Everything else in your code (package, initialization, interceptor design) is solid.
+You're using a singleton OkHttpClient ✔️
+
+You're passing context correctly ✔️
+
+You're using HttpRequestUtil.setOkHttpClient to inject into MapLibre ✔️
+
+Your .mbtiles LRU cache is isolated and efficient ✔️
+ */
+
 /*
 @ReactMethod
     // // Set the MapView reference from JavaScript to inject the OkHttpClient later
