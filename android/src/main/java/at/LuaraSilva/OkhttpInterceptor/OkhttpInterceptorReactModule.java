@@ -4,6 +4,7 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.Cursor;
+import android.util.Log;
 
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -11,7 +12,7 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Promise;
 
 import okhttp3.OkHttpClient;
-import okhttp3.logging.HttpLoggingInterceptor;
+//import okhttp3.logging.HttpLoggingInterceptor; // For debugging api requests.
 import okhttp3.Request;
 import okhttp3.Interceptor;
 import okhttp3.Response;
@@ -19,6 +20,7 @@ import okhttp3.Response;
 import org.maplibre.android.module.http.HttpRequestUtil;
 
 import java.io.IOException;
+import java.io.File;
 
 // import org.maplibre.gl.module.http.HttpRequestImpl; // MapLibre's networking module // got a problem with this import
 
